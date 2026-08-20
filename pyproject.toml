@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=77.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "realtimetts-qwen-native"
+version = "0.1.0"
+description = "RealtimeTTS-maintained native qwentts.cpp Python wheels"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Andres Marafioti" }, { name = "Kolja Beigel" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "huggingface-hub",
+]
+optional-dependencies.cuda12 = [
+    "nvidia-cuda-runtime-cu12>=12.8,<13; platform_system == 'Windows' or platform_system == 'Linux'",
+    "nvidia-cublas-cu12>=12.8,<13; platform_system == 'Windows' or platform_system == 'Linux'",
+]
+optional-dependencies.test = [
+    "pytest>=8",
+    "tomli>=2; python_version < '3.11'",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/KoljaB/realtimetts-qwen-native"
+Repository = "https://github.com/KoljaB/realtimetts-qwen-native"
+Upstream = "https://github.com/andimarafioti/qwentts-cpp-python"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+qwentts_cpp = ["py.typed", "lib/*"]
+
+[tool.qwentts-cpp-python]
+qwentts-ref = "7b6ed4f6db964c14fd3ac36c1ca13f1ce6150f4e"
+qwentts-abi = 4
+
+[tool.cibuildwheel]
+build = "cp310-manylinux_x86_64 cp310-win_amd64"
+skip = "*-musllinux_* *-manylinux_i686"
+before-build = "python scripts/build_native.py --backend cuda --clean"
+test-command = "python -c \"from qwentts_cpp import QwenLibrary; print(QwenLibrary().version())\""
+
+[tool.cibuildwheel.linux]
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
+
+[tool.cibuildwheel.windows]
+repair-wheel-command = "delvewheel repair --analyze-existing --ignore-existing --add-path src/qwentts_cpp/lib --exclude cudart64_12.dll;cublas64_12.dll;cublasLt64_12.dll;nvcuda.dll -w {dest_dir} {wheel}"

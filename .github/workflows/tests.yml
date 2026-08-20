@@ -1,0 +1,37 @@
+name: Python tests
+
+"on":
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: ${{ matrix.os }} Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-22.04
+          - windows-2022
+        python:
+          - "3.10"
+          - "3.14"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install package and test dependencies
+        run: python -m pip install --upgrade pip -e ".[test]"
+
+      - name: Run unit tests without native models
+        run: python -m pytest -p no:cacheprovider -q
