@@ -31,7 +31,7 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Install package and test dependencies
-        run: python -m pip install --upgrade pip -e ".[test]"
+        run: python -m pip install --upgrade pip setuptools wheel -e ".[test]"
 
       - name: Run unit tests without native models
         run: python -m pytest -p no:cacheprovider -q

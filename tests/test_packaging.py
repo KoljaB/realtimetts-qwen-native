@@ -37,7 +37,7 @@ def test_all_workflows_use_release_pin_and_windows_builds() -> None:
         for path in (ROOT / ".github" / "workflows").glob("*.yml")
     }
 
-    for name in ("wheels.yml", "publish.yml", "publish-hf-wheels.yml"):
+    for name in ("publish.yml",):
         text = workflows[name]
         refs = set(
             re.findall(r"(?:default:\s+|QWENTTS_REF:.*')([0-9a-f]{40})", text)

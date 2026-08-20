@@ -94,8 +94,9 @@ def test_doctor_hardware_contract_rejects_missing_gpu_old_driver_and_old_gpu(mon
     report = diagnostics.build_doctor_report(check_model=False)
     assert "nvidia-smi missing" in report["errors"]
 
+    minimum_driver = "527.41" if diagnostics.sys.platform == "win32" else "525.60.13"
     assert diagnostics._hardware_errors([diagnostics.GPUInfo("old", "524.0", "7.0")]) == [
-        "old: driver 524.0 is older than the CUDA 12 compatibility baseline 527.41; update the NVIDIA driver",
+        f"old: driver 524.0 is older than the CUDA 12 compatibility baseline {minimum_driver}; update the NVIDIA driver",
         "old: compute capability 7.0 is below the supported minimum 7.5",
     ]
 
