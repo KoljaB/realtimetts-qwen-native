@@ -52,6 +52,8 @@ def test_prefetch_reports_download_error_without_traceback(monkeypatch, capsys):
 
 
 def test_build_doctor_report_checks_native_abi_gpu_and_cached_model(tmp_path, monkeypatch):
+    if diagnostics.sys.platform == "win32":
+        monkeypatch.setattr(diagnostics.platform, "release", lambda: "11")
     library_path = tmp_path / "qwen.dll"
     library_path.touch()
     talker = tmp_path / "talker.gguf"
