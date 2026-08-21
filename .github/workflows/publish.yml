@@ -65,6 +65,7 @@ jobs:
           python -m pip install --upgrade pip auditwheel build wheel
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends cmake ninja-build patchelf wget ca-certificates
+          python -m pip install --upgrade patchelf
 
       - name: Install CUDA toolkit
         run: |
