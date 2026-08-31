@@ -60,7 +60,7 @@ def test_build_doctor_report_checks_native_abi_gpu_and_cached_model(tmp_path, mo
     codec = tmp_path / "codec.gguf"
 
     class Library:
-        native_abi = 4
+        native_abi = 5
         cuda_major = 12
         preloaded_libraries = [tmp_path / "cublas.dll"]
         preloaded_library_sources = {tmp_path / "cublas.dll": "nvidia-cublas-cu12"}
@@ -69,7 +69,7 @@ def test_build_doctor_report_checks_native_abi_gpu_and_cached_model(tmp_path, mo
             assert path == library_path
 
         def version(self):
-            return "7b6ed4f (2026-08-05)"
+            return "b91bca4 (2026-08-31)"
 
     monkeypatch.setattr(diagnostics, "find_library", lambda _path: library_path)
     monkeypatch.setattr(diagnostics, "QwenLibrary", Library)
@@ -83,7 +83,7 @@ def test_build_doctor_report_checks_native_abi_gpu_and_cached_model(tmp_path, mo
     report = diagnostics.build_doctor_report()
 
     assert report["errors"] == []
-    assert report["native_abi"] == 4
+    assert report["native_abi"] == 5
     assert report["gpus"][0]["compute_capability"] == "7.5"
     assert report["model_cache"]["ready"] is True
     assert report["preloaded_libraries"] == [

@@ -213,14 +213,10 @@ runtime.
 
 - `.github/workflows/tests.yml` runs model-free unit tests on Windows and Linux
   with the oldest and newest supported Python versions.
-- `.github/workflows/wheels.yml` builds validation wheels for Windows x64,
-  Linux x86_64, and the retained Linux AArch64/CPU targets.
 - `.github/workflows/publish.yml` builds CUDA 12.8 Windows and
   `manylinux_2_35` wheels plus the source archive from the pinned source. It
   never uploads them; publication happens only after installed-artifact
   acceptance and signed release-guard verification.
-- `.github/workflows/publish-hf-wheels.yml` rebuilds local-version backend
-  variants and their static `--find-links` index.
 - Windows repair uses `delvewheel --analyze-existing`; Linux repair uses
   `auditwheel`. CUDA runtime, cuBLAS, and the driver library are external by
   design.
