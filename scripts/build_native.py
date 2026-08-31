@@ -11,8 +11,8 @@ import sys
 from pathlib import Path
 
 
-PINNED_QWENTTS_REF = "7b6ed4f6db964c14fd3ac36c1ca13f1ce6150f4e"
-PINNED_QWENTTS_ABI = 4
+PINNED_QWENTTS_REF = "b91bca43f9adc5df839161ce4c88b0f6743b27ff"
+PINNED_QWENTTS_ABI = 5
 PORTABLE_CMAKE_ARGUMENTS = [
     # Binary wheels must run on CPUs other than the build host. ggml otherwise
     # defaults to -march=native, which can produce illegal instructions on an
@@ -107,6 +107,24 @@ def verify_qwentts_abi(source: Path, expected: int = PINNED_QWENTTS_ABI) -> None
         raise SystemExit(
             f"Incompatible qwentts.cpp ABI {actual}; this wrapper expects ABI {expected}. "
             f"The release-tested native revision is {PINNED_QWENTTS_REF}."
+        )
+
+
+def verify_qwentts_revision(
+    source: Path, expected: str = PINNED_QWENTTS_REF
+) -> None:
+    result = subprocess.run(
+        ["git", "-C", str(source), "rev-parse", "HEAD"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    actual = result.stdout.strip().lower()
+    if result.returncode != 0 or actual != expected.lower():
+        detail = actual or result.stderr.strip() or "not a Git checkout"
+        raise SystemExit(
+            f"Unpinned qwentts.cpp source revision {detail}; "
+            f"this release requires {expected}."
         )
 
 
@@ -259,6 +277,7 @@ def main() -> int:
 
     if not args.skip_build:
         verify_qwentts_abi(source, args.expected_abi)
+        verify_qwentts_revision(source)
 
     if args.clean and build_dir.exists():
         shutil.rmtree(build_dir)

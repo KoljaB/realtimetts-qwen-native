@@ -74,10 +74,21 @@ def test_qwentts_abi_must_match(tmp_path: Path) -> None:
         build_native.verify_qwentts_abi(source, 3)
 
 
-def test_release_pin_is_full_sha_and_abi_four() -> None:
-    assert build_native.PINNED_QWENTTS_REF == "7b6ed4f6db964c14fd3ac36c1ca13f1ce6150f4e"
-    assert build_native.PINNED_QWENTTS_ABI == 4
+def test_release_pin_is_full_sha_and_abi_five() -> None:
+    assert build_native.PINNED_QWENTTS_REF == "b91bca43f9adc5df839161ce4c88b0f6743b27ff"
+    assert build_native.PINNED_QWENTTS_ABI == 5
     assert build_native.PORTABLE_CMAKE_ARGUMENTS == ["-DGGML_NATIVE=OFF"]
+
+
+def test_qwentts_revision_must_match_release_pin(tmp_path, monkeypatch) -> None:
+    completed = build_native.subprocess.CompletedProcess(
+        args=["git"], returncode=0, stdout="different\n", stderr=""
+    )
+    monkeypatch.setattr(
+        build_native.subprocess, "run", lambda *args, **kwargs: completed
+    )
+    with pytest.raises(SystemExit, match="Unpinned qwentts.cpp source revision"):
+        build_native.verify_qwentts_revision(tmp_path)
 
 
 def test_skip_build_copy_does_not_destroy_package_on_failure(tmp_path: Path) -> None:

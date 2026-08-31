@@ -14,6 +14,7 @@ from qwentts_cpp import (
     ABIMismatchError,
     OutOfMemoryError,
     QT_ABI_VERSION,
+    QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
     QwenLibrary,
     QwenStatus,
     QwenTTS,
@@ -21,8 +22,8 @@ from qwentts_cpp import (
 from qwentts_cpp._binding import QtAudio, QtInitParams, QtTTSParams
 
 
-def test_abi4_ctypes_structs_match_qwen_header_field_order_and_offsets():
-    assert QT_ABI_VERSION == 4
+def test_abi5_ctypes_structs_match_qwen_header_field_order_and_offsets():
+    assert QT_ABI_VERSION == 5
     assert [name for name, _ in QtInitParams._fields_] == [
         "abi_version",
         "talker_path",
@@ -61,14 +62,19 @@ def test_abi4_ctypes_structs_match_qwen_header_field_order_and_offsets():
         "ref_spk_dim",
         "ref_codes",
         "ref_T",
+        "onset_silence_ids",
+        "onset_silence_id_count",
+        "onset_silence_ban_frames",
     ]
     if ctypes.sizeof(ctypes.c_void_p) == 8:
         assert ctypes.sizeof(QtInitParams) == 40
-        assert ctypes.sizeof(QtTTSParams) == 184
+        assert ctypes.sizeof(QtTTSParams) == 200
         assert QtInitParams.max_batch.offset == 28
         assert QtInitParams.codec_chunk_sec.offset == 32
         assert QtTTSParams.ref_spk_emb.offset == 152
         assert QtTTSParams.ref_T.offset == 176
+        assert QtTTSParams.onset_silence_ids.offset == 184
+        assert QtTTSParams.onset_silence_ban_frames.offset == 196
 
 
 def test_default_initializer_rejects_mismatched_abi_without_small_struct_write():
@@ -77,7 +83,7 @@ def test_default_initializer_rejects_mismatched_abi_without_small_struct_write()
     def initialize(pointer):
         ctypes.cast(pointer, ctypes.POINTER(ctypes.c_int)).contents.value = QT_ABI_VERSION + 1
 
-    with pytest.raises(ABIMismatchError, match="reports ABI 5"):
+    with pytest.raises(ABIMismatchError, match="reports ABI 6"):
         QwenLibrary._read_default_params(callback_type(initialize), QtInitParams, "test initializer")
 
 
@@ -153,7 +159,7 @@ def test_native_error_translation_identifies_oom_and_abi():
     assert isinstance(oom, OutOfMemoryError)
     assert "Q8_0" in str(oom)
     assert isinstance(abi, ABIMismatchError)
-    assert "ABI 4" in str(abi)
+    assert "ABI 5" in str(abi)
 
 
 def test_cuda_major_is_inferred_from_windows_backend_binary(tmp_path, monkeypatch):
@@ -279,7 +285,7 @@ def test_close_waits_for_active_native_operation_before_freeing_context():
     assert tts._ctx is None
 
 
-def test_bundled_windows_library_reports_pinned_abi4():
+def test_bundled_windows_library_reports_pinned_abi5():
     if os.name != "nt":
         pytest.skip("Windows ABI smoke")
     library_path = Path(binding.__file__).resolve().parent / "lib" / "qwen.dll"
@@ -290,10 +296,99 @@ def test_bundled_windows_library_reports_pinned_abi4():
     init_defaults = library.default_init_params()
     tts_defaults = library.default_tts_params()
 
-    assert library.native_abi == 4
-    assert library.version().startswith("7b6ed4f")
-    assert init_defaults.abi_version == 4
+    assert library.native_abi == 5
+    assert library.version().startswith("b91bca4")
+    assert init_defaults.abi_version == 5
     assert init_defaults.max_batch == 1
     assert init_defaults.codec_chunk_sec == pytest.approx(24.0)
-    assert tts_defaults.abi_version == 4
+    assert tts_defaults.abi_version == 5
     assert tts_defaults.max_new_tokens == 2048
+
+
+def _make_onset_params(tts, *, onset_profile="off", ref_text=None, ref_codes=None):
+    return tts._make_tts_params(
+        text="hello",
+        lang="english",
+        instruct=None,
+        speaker=None,
+        ref_audio_24k=None,
+        ref_spk_emb=np.array([0.1, 0.2], dtype=np.float32),
+        ref_codes=ref_codes,
+        ref_text=ref_text,
+        onset_silence_profile=onset_profile,
+        seed=42,
+        max_new_tokens=16,
+        do_sample=True,
+        temperature=0.9,
+        top_k=50,
+        top_p=1.0,
+        repetition_penalty=1.05,
+        subtalker_do_sample=None,
+        subtalker_temperature=None,
+        subtalker_top_k=None,
+        subtalker_top_p=None,
+        dump_dir=None,
+    )
+
+
+def test_onset_profile_is_off_by_default():
+    tts = _fake_tts()
+    params, _keepalive = _make_onset_params(tts)
+
+    assert not params.onset_silence_ids
+    assert params.onset_silence_id_count == 0
+    assert params.onset_silence_ban_frames == 0
+
+
+def test_onset_profile_rejects_asset_mismatch(tmp_path):
+    talker = tmp_path / "talker.gguf"
+    codec = tmp_path / "codec.gguf"
+    talker.write_bytes(b"wrong talker")
+    codec.write_bytes(b"wrong codec")
+    tts = _fake_tts()
+    tts._talker_path = talker
+    tts._codec_path = codec
+    tts._validated_onset_profiles = set()
+
+    with pytest.raises(ValueError, match="does not match"):
+        tts.validate_onset_silence_profile(QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE)
+
+
+def test_onset_profile_populates_exact_ids_and_rejects_icl(tmp_path, monkeypatch):
+    talker = tmp_path / "talker.gguf"
+    codec = tmp_path / "codec.gguf"
+    talker.write_bytes(b"talker")
+    codec.write_bytes(b"codec")
+    tts = _fake_tts()
+    tts._talker_path = talker
+    tts._codec_path = codec
+    tts._validated_onset_profiles = set()
+    monkeypatch.setitem(
+        binding._ONSET_SILENCE_PROFILES,
+        QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
+        {
+            "talker_sha256": binding._sha256_path(talker),
+            "codec_sha256": binding._sha256_path(codec),
+            "ids": (212, 215, 462, 619, 1181, 1524, 1657, 1995),
+            "frames": 3,
+        },
+    )
+
+    params, keepalive = _make_onset_params(
+        tts,
+        onset_profile=QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
+    )
+    assert keepalive
+    assert params.onset_silence_id_count == 8
+    assert params.onset_silence_ban_frames == 3
+    assert np.ctypeslib.as_array(params.onset_silence_ids, shape=(8,)).tolist() == [
+        212, 215, 462, 619, 1181, 1524, 1657, 1995
+    ]
+
+    with pytest.raises(ValueError, match="not ICL"):
+        _make_onset_params(
+            tts,
+            onset_profile=QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
+            ref_text="reference",
+            ref_codes=np.array([[1]], dtype=np.int32),
+        )

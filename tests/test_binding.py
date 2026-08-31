@@ -57,12 +57,15 @@ def test_loads_library_from_env_when_available():
     assert lib.version()
 
 
-def test_tts_params_contains_abi4_latent_tail_fields():
-    assert [name for name, _ctype in QtTTSParams._fields_[-4:]] == [
+def test_tts_params_contains_abi5_onset_tail_fields():
+    assert [name for name, _ctype in QtTTSParams._fields_[-7:]] == [
         "ref_spk_emb",
         "ref_spk_dim",
         "ref_codes",
         "ref_T",
+        "onset_silence_ids",
+        "onset_silence_id_count",
+        "onset_silence_ban_frames",
     ]
 
 

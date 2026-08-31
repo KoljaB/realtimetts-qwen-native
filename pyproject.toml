@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "realtimetts-qwen-native"
-version = "0.1.0"
+version = "0.2.0"
 description = "RealtimeTTS-maintained native qwentts.cpp Python wheels"
 readme = "README.md"
 license = "MIT"
@@ -50,8 +50,8 @@ where = ["src"]
 qwentts_cpp = ["py.typed", "lib/*"]
 
 [tool.qwentts-cpp-python]
-qwentts-ref = "7b6ed4f6db964c14fd3ac36c1ca13f1ce6150f4e"
-qwentts-abi = 4
+qwentts-ref = "b91bca43f9adc5df839161ce4c88b0f6743b27ff"
+qwentts-abi = 5
 
 [tool.cibuildwheel]
 build = "cp310-manylinux_x86_64 cp310-win_amd64"

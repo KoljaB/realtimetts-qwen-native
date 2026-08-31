@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+import hashlib
 import importlib.util
 import os
 import queue
@@ -15,8 +16,26 @@ from typing import Any, Iterator, Sequence, Tuple
 
 import numpy as np
 
-QT_ABI_VERSION = 4
+QT_ABI_VERSION = 5
 RVQ_CODE_BITS = 11
+QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE = "qwen3_tts_12hz_0_6b_base_q8_v1"
+
+_ONSET_SILENCE_PROFILES = {
+    QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE: {
+        "talker_sha256": "d54dbaf10591421fa764ed630d764efa717ae40cd959bd48c66d4eb1af226426",
+        "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+        "ids": (212, 215, 462, 619, 1181, 1524, 1657, 1995),
+        "frames": 3,
+    },
+}
+
+
+def _sha256_path(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 class QwenStatus(IntEnum):
@@ -113,6 +132,9 @@ class QtTTSParams(ctypes.Structure):
         ("ref_spk_dim", ctypes.c_int),
         ("ref_codes", ctypes.POINTER(ctypes.c_int32)),
         ("ref_T", ctypes.c_int),
+        ("onset_silence_ids", ctypes.POINTER(ctypes.c_int32)),
+        ("onset_silence_id_count", ctypes.c_int),
+        ("onset_silence_ban_frames", ctypes.c_int),
     ]
 
 
@@ -764,14 +786,17 @@ class QwenTTS:
         codec_chunk_sec: float = 24.0,
     ):
         self.library = QwenLibrary(library_path)
+        self._talker_path = Path(talker_path).expanduser().resolve()
+        self._codec_path = Path(codec_path).expanduser().resolve()
+        self._validated_onset_profiles: set[str] = set()
         self._ctx: int | None = None
         self._lock = threading.Lock()
         self.last_synthesize_profile: dict[str, Any] | None = None
         self.last_stream_profile: dict[str, Any] | None = None
         self.last_extract_voice_ref_profile: dict[str, Any] | None = None
         self._init(
-            talker_path,
-            codec_path,
+            self._talker_path,
+            self._codec_path,
             use_fa=use_fa,
             clamp_fp16=clamp_fp16,
             max_batch=max_batch,
@@ -832,6 +857,31 @@ class QwenTTS:
         if not ctx:
             raise _native_exception(self.library.last_error())
         self._ctx = ctx
+
+    def validate_onset_silence_profile(self, profile: str = "off") -> str:
+        """Validate and cache a fail-closed checkpoint-specific onset profile."""
+        name = str(profile or "off").strip().lower()
+        if name == "off":
+            return name
+        config = _ONSET_SILENCE_PROFILES.get(name)
+        if config is None:
+            choices = ", ".join(["off", *_ONSET_SILENCE_PROFILES])
+            raise ValueError(f"Unknown onset_silence_profile {profile!r}. Expected one of: {choices}")
+        if name in self._validated_onset_profiles:
+            return name
+        actual_talker = _sha256_path(self._talker_path)
+        actual_codec = _sha256_path(self._codec_path)
+        if actual_talker != config["talker_sha256"] or actual_codec != config["codec_sha256"]:
+            raise ValueError(
+                f"onset_silence_profile {name!r} does not match the loaded talker/codec assets; "
+                "refusing checkpoint-specific token suppression"
+            )
+        self._validated_onset_profiles.add(name)
+        return name
+
+    def _onset_silence_config(self, profile: str) -> dict[str, object] | None:
+        name = self.validate_onset_silence_profile(profile)
+        return None if name == "off" else _ONSET_SILENCE_PROFILES[name]
 
     def close(self) -> None:
         # Every native operation that touches the context holds this same
@@ -982,6 +1032,7 @@ class QwenTTS:
         ref_spk_emb: np.ndarray | None = None,
         ref_codes: np.ndarray | None = None,
         ref_text: str | None = None,
+        onset_silence_profile: str = "off",
         seed: int = -1,
         max_new_tokens: int = 2048,
         do_sample: bool = True,
@@ -1007,6 +1058,7 @@ class QwenTTS:
             ref_spk_emb=ref_spk_emb,
             ref_codes=ref_codes,
             ref_text=ref_text,
+            onset_silence_profile=onset_silence_profile,
             seed=seed,
             max_new_tokens=max_new_tokens,
             do_sample=do_sample,
@@ -1070,6 +1122,7 @@ class QwenTTS:
         ref_spk_emb: np.ndarray | None = None,
         ref_codes: np.ndarray | None = None,
         ref_text: str | None = None,
+        onset_silence_profile: str = "off",
         seed: int = -1,
         max_new_tokens: int = 2048,
         do_sample: bool = True,
@@ -1150,6 +1203,7 @@ class QwenTTS:
                     ref_spk_emb=ref_spk_emb,
                     ref_codes=ref_codes,
                     ref_text=ref_text,
+                    onset_silence_profile=onset_silence_profile,
                     seed=seed,
                     max_new_tokens=max_new_tokens,
                     do_sample=do_sample,
@@ -1231,6 +1285,7 @@ class QwenTTS:
         ref_spk_emb: np.ndarray | None,
         ref_codes: np.ndarray | None,
         ref_text: str | None,
+        onset_silence_profile: str,
         seed: int,
         max_new_tokens: int,
         do_sample: bool,
@@ -1255,6 +1310,17 @@ class QwenTTS:
             raise ValueError("ref_codes requires ref_spk_emb")
         if ref_codes is not None and not ref_text:
             raise ValueError("ref_codes requires ref_text")
+        onset_config = self._onset_silence_config(onset_silence_profile)
+        if onset_config is not None:
+            if ref_text or ref_codes is not None:
+                raise ValueError("onset_silence_profile is only valid for x-vector-only requests, not ICL")
+            if ref_audio_24k is None and ref_spk_emb is None:
+                raise ValueError("onset_silence_profile requires an x-vector voice reference")
+            onset_ids = np.ascontiguousarray(onset_config["ids"], dtype=np.int32)
+            keepalive.append(onset_ids)
+            params.onset_silence_ids = onset_ids.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
+            params.onset_silence_id_count = int(onset_ids.size)
+            params.onset_silence_ban_frames = int(onset_config["frames"])
 
         params.text = _as_utf8(text, keepalive)  # type: ignore[arg-type]
         params.lang = _as_utf8(lang, keepalive)  # type: ignore[arg-type]

@@ -6,7 +6,7 @@ the `qwentts.cpp` C ABI. The distribution name is
 
 This package is based on the MIT-licensed
 [`qwentts-cpp-python`](https://github.com/andimarafioti/qwentts-cpp-python) by
-Andres Marafioti and [`qwentts.cpp`](https://github.com/ServeurpersoCom/qwentts.cpp).
+Andres Marafioti and [`qwentts.cpp`](https://github.com/ServeurpersoCom/qwentts.cpp), with the release patch maintained in [`KoljaB/qwentts.cpp`](https://github.com/KoljaB/qwentts.cpp).
 It uses a distinct distribution name and does not claim to be an official
 release of either upstream project.
 
@@ -15,20 +15,48 @@ qwen/GGML libraries. It deliberately does **not** bundle GGUF model weights.
 
 ## Release status
 
-Version 0.1.0 is the native package coordinated with RealtimeTTS 0.7.4.
+Version 0.2.0 is the native package coordinated with RealtimeTTS 0.8.4.
 
 The release-tested native source is pinned to qwentts.cpp commit
-`7b6ed4f6db964c14fd3ac36c1ca13f1ce6150f4e`, which uses C ABI v4. The build
-script verifies `QT_ABI_VERSION == 4` before compiling, and all release workflows
+`b91bca43f9adc5df839161ce4c88b0f6743b27ff`, which uses C ABI v5. The build
+script verifies `QT_ABI_VERSION == 5` before compiling, and all release workflows
 fetch that exact commit by default. The native `qt_version()` result remains the
 authoritative runtime build identity.
+
+### Optional x-vector onset profile
+
+ABI v5 adds request-local suppression of checkpoint-specific leading-silence
+codec tokens. It is **off by default**, applies only to Base x-vector-only
+voice cloning, and rejects ICL or mismatched model assets instead of silently
+changing them.
+
+The first validated profile targets the exact public 0.6B Base Q8 talker and
+12 Hz Q8 codec pair:
+
+```python
+from qwentts_cpp import (
+    QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
+    QwenTTS,
+)
+
+for audio, sample_rate in tts.stream(
+    text="Hello.",
+    ref_spk_emb=speaker_embedding,
+    onset_silence_profile=QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
+):
+    consume(audio, sample_rate)
+```
+
+The profile validates both GGUF SHA-256 hashes once, then suppresses eight
+tokenizer-derived c0 silence IDs during frames 0–2. It is checkpoint-specific,
+not speaker-specific: any x-vector voice on the validated model pair can use it.
 
 ## Supported binary targets
 
 | Target | Wheel tag | Minimum runtime | Status |
 | --- | --- | --- | --- |
-| Windows 10/11 x64, NVIDIA | `py3-none-win_amd64` | AVX2/FMA/F16C/BMI2 CPU, CUDA-12-compatible driver | 0.4 release target |
-| Linux x86_64, NVIDIA | `py3-none-manylinux_2_35_x86_64` | AVX2/FMA/F16C/BMI2 CPU, glibc 2.35, CUDA-12-compatible driver | 0.4 release target |
+| Windows 10/11 x64, NVIDIA | `py3-none-win_amd64` | AVX2/FMA/F16C/BMI2 CPU, CUDA-12-compatible driver | 0.2.0 release target |
+| Linux x86_64, NVIDIA | `py3-none-manylinux_2_35_x86_64` | AVX2/FMA/F16C/BMI2 CPU, glibc 2.35, CUDA-12-compatible driver | 0.2.0 release target |
 | Linux AArch64, NVIDIA | `py3-none-manylinux_*_aarch64` | target-dependent | retained secondary target |
 | Linux CPU | `py3-none-manylinux_*` | no CUDA | development/secondary target |
 
@@ -39,7 +67,7 @@ targets yet.
 
 ## Installation target
 
-Once the 0.4 wheels are published, the self-contained CUDA runtime installation
+Once the 0.2.0 wheels are published, the self-contained CUDA runtime installation
 is:
 
 ```bash
@@ -61,7 +89,7 @@ Backend-specific development wheels can also be installed from a local wheelhous
 
 ```bash
 python -m pip install --find-links /path/to/wheelhouse \
-  "realtimetts-qwen-native[cuda12]==0.1.0"
+  "realtimetts-qwen-native[cuda12]==0.2.0"
 ```
 
 Optional Hugging Face wheel indexes may carry backend-specific local versions.
@@ -161,7 +189,7 @@ python -m auditwheel repair \
 ```
 
 The expected repaired artifact is
-`realtimetts_qwen_native-0.1.0-1cu128-py3-none-manylinux_2_35_x86_64.whl`.
+`realtimetts_qwen_native-0.2.0-1cu128-py3-none-manylinux_2_35_x86_64.whl`.
 The validated portable Linux candidate was 94,601,334 bytes, below PyPI's
 104,857,600-byte per-file limit.
 The earlier Linux validation build with an additional native sm_75 cubin was
@@ -187,15 +215,17 @@ runtime.
   with the oldest and newest supported Python versions.
 - `.github/workflows/wheels.yml` builds validation wheels for Windows x64,
   Linux x86_64, and the retained Linux AArch64/CPU targets.
-- `.github/workflows/publish.yml` rebuilds CUDA 12.8 Windows and
-  `manylinux_2_35` wheels from the pinned source for a future PyPI release.
+- `.github/workflows/publish.yml` builds CUDA 12.8 Windows and
+  `manylinux_2_35` wheels plus the source archive from the pinned source. It
+  never uploads them; publication happens only after installed-artifact
+  acceptance and signed release-guard verification.
 - `.github/workflows/publish-hf-wheels.yml` rebuilds local-version backend
   variants and their static `--find-links` index.
 - Windows repair uses `delvewheel --analyze-existing`; Linux repair uses
   `auditwheel`. CUDA runtime, cuBLAS, and the driver library are external by
   design.
-- Publishing workflows never consume validation artifacts. They perform fresh
-  builds and `twine check --strict` before their protected publishing job.
+- Release builds run `twine check --strict` and are retained as immutable CI
+  artifacts for installed-artifact acceptance and guarded publication.
 
 Do not publish, tag, or upload a wheel simply because a local build succeeded.
 Before release, validate an installed artifact on real Windows and Linux NVIDIA
@@ -211,7 +241,7 @@ environment and install only from that wheelhouse:
 ```bash
 python -m venv /path/to/fresh-venv
 /path/to/fresh-venv/bin/python -m pip install --find-links /path/to/wheelhouse \
-  "realtimetts-qwen-native[cuda12]==0.1.0"
+  "realtimetts-qwen-native[cuda12]==0.2.0"
 /path/to/fresh-venv/bin/python -c \
   "from qwentts_cpp import QwenLibrary; print(QwenLibrary().version())"
 ```
@@ -226,7 +256,7 @@ paths.
 
 ## Cached voice references
 
-The pinned qwentts.cpp ABI v4 can skip reference WAV encoding for Base voice cloning by
+The pinned qwentts.cpp ABI v5 can skip reference WAV encoding for Base voice cloning by
 passing precomputed latents:
 
 - `.spk`: raw float32 speaker embedding from `qwen-codec --talker`
