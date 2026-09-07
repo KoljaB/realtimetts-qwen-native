@@ -567,8 +567,8 @@ class QwenLibrary:
 
     def __init__(self, library_path: str | os.PathLike[str] | None = None):
         self.path = find_library(library_path)
-        self.cuda_major = _detect_cuda_major(self.path.parent)
-        self.runtime_library_dirs = discover_runtime_library_dirs()
+        self.cuda_major = None if CPU_ONLY else _detect_cuda_major(self.path.parent)
+        self.runtime_library_dirs = [] if CPU_ONLY else discover_runtime_library_dirs()
         self._dll_dir_handles: list[object] = []
         self._dependency_handles: list[ctypes.CDLL] = []
         self.preloaded_libraries: list[Path] = []
@@ -636,7 +636,8 @@ class QwenLibrary:
         for directory in self.runtime_library_dirs:
             self._add_dll_directory(directory.path)
 
-        self._preload_cuda_runtime(mode)
+        if not CPU_ONLY:
+            self._preload_cuda_runtime(mode)
 
         for dep_name in _dependency_names():
             dep = path.parent / dep_name
