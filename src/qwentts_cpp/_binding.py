@@ -17,6 +17,10 @@ from typing import Any, Iterator, Sequence, Tuple
 import numpy as np
 
 QT_ABI_VERSION = 5
+# This source tree is used only for the isolated CPU wheel. The native
+# library is still checked at runtime through qt_cpu_only() when an
+# explicit CPU thread count is requested.
+CPU_ONLY = True
 RVQ_CODE_BITS = 11
 QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE = "qwen3_tts_12hz_0_6b_base_q8_v1"
 
@@ -576,6 +580,8 @@ class QwenLibrary:
         self._has_qt_speaker_name = False
         self._has_qt_extract_voice_ref = False
         self._has_qt_voice_ref_free = False
+        self._has_qt_cpu_only = False
+        self._has_qt_init_cpu = False
         self._lib = self._load_cdll(self.path)
         try:
             self._bind()
@@ -669,6 +675,18 @@ class QwenLibrary:
         lib.qt_tts_default_params.restype = None
         lib.qt_init.argtypes = [ctypes.POINTER(QtInitParams)]
         lib.qt_init.restype = ctypes.c_void_p
+        try:
+            lib.qt_cpu_only.argtypes = []
+            lib.qt_cpu_only.restype = ctypes.c_int
+            self._has_qt_cpu_only = True
+        except AttributeError:
+            self._has_qt_cpu_only = False
+        try:
+            lib.qt_init_cpu.argtypes = [ctypes.POINTER(QtInitParams), ctypes.c_int]
+            lib.qt_init_cpu.restype = ctypes.c_void_p
+            self._has_qt_init_cpu = True
+        except AttributeError:
+            self._has_qt_init_cpu = False
         lib.qt_free.argtypes = [ctypes.c_void_p]
         lib.qt_free.restype = None
         lib.qt_synthesize.argtypes = [
@@ -748,6 +766,13 @@ class QwenLibrary:
     def version(self) -> str:
         return self._lib.qt_version().decode("utf-8", errors="replace")
 
+    def cpu_only(self) -> bool:
+        if not self._has_qt_cpu_only:
+            raise ABIMismatchError(
+                f"qt_cpu_only is unavailable; CPU initialization requires qwentts.cpp ABI {QT_ABI_VERSION}"
+            )
+        return bool(self._lib.qt_cpu_only())
+
     def last_error(self) -> str:
         err = self._lib.qt_last_error()
         return err.decode("utf-8", errors="replace") if err else ""
@@ -784,6 +809,7 @@ class QwenTTS:
         clamp_fp16: bool = False,
         max_batch: int = 1,
         codec_chunk_sec: float = 24.0,
+        cpu_threads: int | None = None,
     ):
         self.library = QwenLibrary(library_path)
         self._talker_path = Path(talker_path).expanduser().resolve()
@@ -801,6 +827,7 @@ class QwenTTS:
             clamp_fp16=clamp_fp16,
             max_batch=max_batch,
             codec_chunk_sec=codec_chunk_sec,
+            cpu_threads=cpu_threads,
         )
 
     @classmethod
@@ -816,6 +843,7 @@ class QwenTTS:
         clamp_fp16: bool = False,
         max_batch: int = 1,
         codec_chunk_sec: float = 24.0,
+        cpu_threads: int | None = None,
     ) -> "QwenTTS":
         from .models import resolve_gguf_paths
 
@@ -833,6 +861,7 @@ class QwenTTS:
             clamp_fp16=clamp_fp16,
             max_batch=max_batch,
             codec_chunk_sec=codec_chunk_sec,
+            cpu_threads=cpu_threads,
         )
 
     def _init(
@@ -844,6 +873,7 @@ class QwenTTS:
         clamp_fp16: bool,
         max_batch: int,
         codec_chunk_sec: float,
+        cpu_threads: int | None,
     ) -> None:
         keepalive: list[bytes] = []
         params = self.library.default_init_params()
@@ -853,7 +883,23 @@ class QwenTTS:
         params.clamp_fp16 = bool(clamp_fp16)
         params.max_batch = int(max_batch)
         params.codec_chunk_sec = float(codec_chunk_sec)
-        ctx = self.library._lib.qt_init(ctypes.byref(params))
+        if cpu_threads is None:
+            ctx = self.library._lib.qt_init(ctypes.byref(params))
+        else:
+            if isinstance(cpu_threads, bool) or not isinstance(cpu_threads, int):
+                raise TypeError("cpu_threads must be an integer or None")
+            max_threads = min(256, os.cpu_count() or 1)
+            if cpu_threads < 1 or cpu_threads > max_threads:
+                raise ValueError(f"cpu_threads must be in the range [1, {max_threads}]")
+            if not self.library._has_qt_cpu_only or not self.library.cpu_only():
+                raise ABIMismatchError(
+                    "cpu_threads requires a native library compiled with the CPU-only capability"
+                )
+            if not self.library._has_qt_init_cpu:
+                raise ABIMismatchError(
+                    f"qt_init_cpu is unavailable; CPU initialization requires qwentts.cpp ABI {QT_ABI_VERSION}"
+                )
+            ctx = self.library._lib.qt_init_cpu(ctypes.byref(params), ctypes.c_int(cpu_threads))
         if not ctx:
             raise _native_exception(self.library.last_error())
         self._ctx = ctx

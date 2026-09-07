@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "realtimetts-qwen-native"
-version = "0.2.0"
+version = "0.2.0+cpu1"
 description = "RealtimeTTS-maintained native qwentts.cpp Python wheels"
 readme = "README.md"
 license = "MIT"
