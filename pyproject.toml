@@ -14,10 +14,6 @@ dependencies = [
     "numpy",
     "huggingface-hub",
 ]
-optional-dependencies.cuda12 = [
-    "nvidia-cuda-runtime-cu12>=12.8,<13; platform_system == 'Windows' or platform_system == 'Linux'",
-    "nvidia-cublas-cu12>=12.8,<13; platform_system == 'Windows' or platform_system == 'Linux'",
-]
 optional-dependencies.test = [
     "pytest>=8",
     "tomli>=2; python_version < '3.11'",
@@ -50,7 +46,7 @@ where = ["src"]
 qwentts_cpp = ["py.typed", "lib/*"]
 
 [tool.qwentts-cpp-python]
-qwentts-ref = "b91bca43f9adc5df839161ce4c88b0f6743b27ff"
+qwentts-ref = "30ea6696c8f3be5dcecbfdfe777cfea149091ac7"
 qwentts-abi = 5
 
 [tool.cibuildwheel]

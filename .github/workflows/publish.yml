@@ -39,7 +39,7 @@ jobs:
       QWENTTS_CPP_BACKEND: cuda
       QWENTTS_CPP_BUILD_JOBS: ${{ matrix.build_jobs }}
       QWENTTS_CPP_WHEEL_BUILD_TAG: 1cu128
-      QWENTTS_REF: b91bca43f9adc5df839161ce4c88b0f6743b27ff
+      QWENTTS_REF: 30ea6696c8f3be5dcecbfdfe777cfea149091ac7
       CUDA_ARCHITECTURES: ${{ matrix.cuda_architectures }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -113,7 +113,7 @@ jobs:
       QWENTTS_CPP_BACKEND: cuda
       QWENTTS_CPP_BUILD_JOBS: "2"
       QWENTTS_CPP_WHEEL_BUILD_TAG: 1cu128
-      QWENTTS_REF: b91bca43f9adc5df839161ce4c88b0f6743b27ff
+      QWENTTS_REF: 30ea6696c8f3be5dcecbfdfe777cfea149091ac7
       # Keep native sm_75 for the RTX 2080-class latency target. The matching
       # PTX image preserves forward compatibility without pushing this wheel
       # toward PyPI's per-file size limit.

@@ -15,13 +15,15 @@ qwen/GGML libraries. It deliberately does **not** bundle GGUF model weights.
 
 ## Release status
 
-Version 0.2.0 is the native package coordinated with RealtimeTTS 0.8.4.
+Version 0.2.0+cpu1 is the local CPU-only package variant coordinated with RealtimeTTS 0.8.4.
 
 The release-tested native source is pinned to qwentts.cpp commit
-`b91bca43f9adc5df839161ce4c88b0f6743b27ff`, which uses C ABI v5. The build
+`30ea6696c8f3be5dcecbfdfe777cfea149091ac7`, which uses C ABI v5. The build
 script verifies `QT_ABI_VERSION == 5` before compiling, and all release workflows
 fetch that exact commit by default. The native `qt_version()` result remains the
 authoritative runtime build identity.
+
+This variant bundles only CPU native libraries, publishes the local `py3-none-linux_x86_64` wheel, and intentionally has no CUDA optional dependency.
 
 ### Optional x-vector onset profile
 
@@ -58,7 +60,7 @@ not speaker-specific: any x-vector voice on the validated model pair can use it.
 | Windows 10/11 x64, NVIDIA | `py3-none-win_amd64` | AVX2/FMA/F16C/BMI2 CPU, CUDA-12-compatible driver | 0.2.0 release target |
 | Linux x86_64, NVIDIA | `py3-none-manylinux_2_35_x86_64` | AVX2/FMA/F16C/BMI2 CPU, glibc 2.35, CUDA-12-compatible driver | 0.2.0 release target |
 | Linux AArch64, NVIDIA | `py3-none-manylinux_*_aarch64` | target-dependent | retained secondary target |
-| Linux CPU | `py3-none-manylinux_*` | no CUDA | development/secondary target |
+| Linux CPU | `py3-none-linux_x86_64` | no CUDA, glibc 2.39 host | local CPU package variant |
 
 The Python wrapper has no CPython extension, so one `py3-none-<platform>` wheel
 supports Python 3.10 through 3.14. CUDA GPU builds target compute capability 7.5
@@ -67,23 +69,15 @@ targets yet.
 
 ## Installation target
 
-Once the 0.2.0 wheels are published, the self-contained CUDA runtime installation
-is:
+Install the local CPU wheel directly:
 
 ```bash
-pip install "realtimetts-qwen-native[cuda12]"
+pip install realtimetts_qwen_native-0.2.0+cpu1-py3-none-linux_x86_64.whl
 ```
 
-The `cuda12` extra installs NVIDIA's official `nvidia-cuda-runtime-cu12` and
-`nvidia-cublas-cu12` wheels at version 12.8 or newer. A supported NVIDIA driver is still required, but
-users do not need Visual Studio, CMake, Ninja, NVCC, a full CUDA Toolkit, or
-manual DLL/SO search paths. Torch and a system CUDA Toolkit are loader fallbacks,
-not installation requirements.
-
-Expect roughly 630–650 MB for cuBLAS, its NVRTC dependency, and the much smaller
-CUDA runtime package with the currently tested resolver.
-Model weights are a separate first-use download: the default Q8 talker and codec
-are approximately 1.3 GB together and remain in the Hugging Face cache.
+The wheel contains no CUDA binaries or CUDA package dependencies. Model weights
+remain separate and must be supplied from the Hugging Face cache or a local
+model directory.
 
 Backend-specific development wheels can also be installed from a local wheelhouse:
 
