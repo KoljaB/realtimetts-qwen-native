@@ -1,0 +1,3 @@
+# Native shared libraries are wheel-only; source archives remain source-only.
+exclude src/qwentts_cpp/lib/*
+recursive-exclude src/qwentts_cpp/lib *.so *.so.* *.dll *.dylib
