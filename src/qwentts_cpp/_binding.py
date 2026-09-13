@@ -23,6 +23,9 @@ QT_ABI_VERSION = 5
 CPU_ONLY = True
 RVQ_CODE_BITS = 11
 QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE = "qwen3_tts_12hz_0_6b_base_q8_v1"
+QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE = (
+    "qwen3_tts_12hz_0_6b_base_q8_cpu_recovery_v2"
+)
 
 _ONSET_SILENCE_PROFILES = {
     QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE: {
@@ -30,6 +33,13 @@ _ONSET_SILENCE_PROFILES = {
         "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
         "ids": (212, 215, 462, 619, 1181, 1524, 1657, 1995),
         "frames": 3,
+    },
+    QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE: {
+        "talker_sha256": "d54dbaf10591421fa764ed630d764efa717ae40cd959bd48c66d4eb1af226426",
+        "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+        "ids": (212, 215, 462, 619, 1181, 1524, 1657, 1995, 1221),
+        "frames": 3,
+        "cpu_only": True,
     },
 }
 
@@ -914,6 +924,17 @@ class QwenTTS:
         if config is None:
             choices = ", ".join(["off", *_ONSET_SILENCE_PROFILES])
             raise ValueError(f"Unknown onset_silence_profile {profile!r}. Expected one of: {choices}")
+        if config.get("cpu_only"):
+            try:
+                runtime_is_cpu_only = bool(self.library.cpu_only())
+            except (ABIMismatchError, AttributeError) as exc:
+                raise ValueError(
+                    f"onset_silence_profile {name!r} requires a native CPU-only runtime"
+                ) from exc
+            if not runtime_is_cpu_only:
+                raise ValueError(
+                    f"onset_silence_profile {name!r} requires a native CPU-only runtime"
+                )
         if name in self._validated_onset_profiles:
             return name
         actual_talker = _sha256_path(self._talker_path)
@@ -1319,6 +1340,7 @@ class QwenTTS:
             internal_cancel_event.set()
             if thread.is_alive():
                 thread.join(timeout=1.0)
+            profile["producer_alive_after_close"] = thread.is_alive()
             profile["stream_closed_ms"] = elapsed_ms()
 
     def _make_tts_params(

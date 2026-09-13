@@ -15,7 +15,7 @@ qwen/GGML libraries. It deliberately does **not** bundle GGUF model weights.
 
 ## Release status
 
-Version 0.2.0+cpu1 is the local CPU-only package variant coordinated with RealtimeTTS 0.8.4.
+Version 0.2.0+cpu2 is the local CPU-only package variant coordinated with RealtimeTTS 0.8.4.
 
 The release-tested native source is pinned to qwentts.cpp commit
 `30ea6696c8f3be5dcecbfdfe777cfea149091ac7`, which uses C ABI v5. The build
@@ -53,6 +53,15 @@ The profile validates both GGUF SHA-256 hashes once, then suppresses eight
 tokenizer-derived c0 silence IDs during frames 0–2. It is checkpoint-specific,
 not speaker-specific: any x-vector voice on the validated model pair can use it.
 
+The CPU wheel also exports the separate experimental recovery profile
+`qwen3_tts_12hz_0_6b_base_q8_cpu_recovery_v2`. It uses the same model hashes
+and three-frame window, adds c0 ID `1221` to the v1 set, and is accepted only
+when the loaded native library reports a CPU-only runtime. Use it only for one
+bounded retry after an initial attempt has produced at least 240 ms of raw PCM
+that is still silent. Do not apply it to every initial request: blanket use can
+add an extra syllable. It carries no general quality or latency claim; `off`
+and v1 remain unchanged.
+
 ## Supported binary targets
 
 | Target | Wheel tag | Minimum runtime | Status |
@@ -72,7 +81,7 @@ targets yet.
 Install the local CPU wheel directly:
 
 ```bash
-pip install realtimetts_qwen_native-0.2.0+cpu1-py3-none-linux_x86_64.whl
+pip install realtimetts_qwen_native-0.2.0+cpu2-py3-none-linux_x86_64.whl
 ```
 
 The wheel contains no CUDA binaries or CUDA package dependencies. Model weights

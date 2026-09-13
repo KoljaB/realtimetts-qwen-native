@@ -7,6 +7,7 @@ from ._binding import (
     CPU_ONLY,
     QT_ABI_VERSION,
     QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
+    QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE,
     RVQ_CODE_BITS,
     QwenLibrary,
     QwenStatus,
@@ -22,7 +23,7 @@ from ._binding import (
 )
 from .models import GGUF_REPO, resolve_gguf_paths
 
-__version__ = "0.2.0+cpu1"
+__version__ = "0.2.0+cpu2"
 
 __all__ = [
     "ABIMismatchError",
@@ -34,6 +35,7 @@ __all__ = [
     "OutOfMemoryError",
     "QT_ABI_VERSION",
     "QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE",
+    "QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE",
     "RVQ_CODE_BITS",
     "QwenLibrary",
     "QwenStatus",

@@ -15,6 +15,7 @@ from qwentts_cpp import (
     OutOfMemoryError,
     QT_ABI_VERSION,
     QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
+    QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE,
     QwenLibrary,
     QwenStatus,
     QwenTTS,
@@ -199,6 +200,9 @@ class _FakeStreamingLibrary:
         params.seed = -1
         return params
 
+    def cpu_only(self):
+        return True
+
     def last_error(self):
         return ""
 
@@ -241,6 +245,7 @@ def test_stream_profile_exposes_absolute_callback_timestamp():
     assert isinstance(profile["first_callback_perf_counter_ns"], int)
     assert isinstance(profile["first_yield_perf_counter_ns"], int)
     assert profile["first_yield_perf_counter_ns"] >= profile["first_callback_perf_counter_ns"]
+    assert profile["producer_alive_after_close"] is False
 
 
 def test_stream_cancellation_after_last_queued_chunk_does_not_drop_it():
@@ -391,4 +396,73 @@ def test_onset_profile_populates_exact_ids_and_rejects_icl(tmp_path, monkeypatch
             onset_profile=QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
             ref_text="reference",
             ref_codes=np.array([[1]], dtype=np.int32),
+        )
+
+
+def test_cpu_recovery_v2_onset_profile_uses_exact_ids_window_and_rejects_icl(tmp_path, monkeypatch):
+    talker = tmp_path / "talker.gguf"
+    codec = tmp_path / "codec.gguf"
+    talker.write_bytes(b"talker")
+    codec.write_bytes(b"codec")
+    tts = _fake_tts()
+    tts._talker_path = talker
+    tts._codec_path = codec
+    tts._validated_onset_profiles = set()
+
+    source_config = dict(
+        binding._ONSET_SILENCE_PROFILES[
+            QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE
+        ]
+    )
+    assert source_config["ids"] == (212, 215, 462, 619, 1181, 1524, 1657, 1995, 1221)
+    assert source_config["frames"] == 3
+    assert source_config["cpu_only"] is True
+    source_config["talker_sha256"] = binding._sha256_path(talker)
+    source_config["codec_sha256"] = binding._sha256_path(codec)
+    monkeypatch.setitem(
+        binding._ONSET_SILENCE_PROFILES,
+        QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE,
+        source_config,
+    )
+
+    params, keepalive = _make_onset_params(
+        tts,
+        onset_profile=QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE,
+    )
+    assert keepalive
+    assert params.onset_silence_id_count == 9
+    assert params.onset_silence_ban_frames == 3
+    assert np.ctypeslib.as_array(params.onset_silence_ids, shape=(9,)).tolist() == [
+        212, 215, 462, 619, 1181, 1524, 1657, 1995, 1221
+    ]
+
+    with pytest.raises(ValueError, match="not ICL"):
+        _make_onset_params(
+            tts,
+            onset_profile=QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE,
+            ref_text="reference",
+            ref_codes=np.array([[1]], dtype=np.int32),
+        )
+
+    tts._validated_onset_profiles = set()
+    tts.library.cpu_only = lambda: False
+    with pytest.raises(ValueError, match="CPU-only"):
+        tts.validate_onset_silence_profile(
+            QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE
+        )
+
+
+def test_cpu_recovery_v2_onset_profile_rejects_asset_mismatch(tmp_path):
+    talker = tmp_path / "talker.gguf"
+    codec = tmp_path / "codec.gguf"
+    talker.write_bytes(b"wrong talker")
+    codec.write_bytes(b"wrong codec")
+    tts = _fake_tts()
+    tts._talker_path = talker
+    tts._codec_path = codec
+    tts._validated_onset_profiles = set()
+
+    with pytest.raises(ValueError, match="does not match"):
+        tts.validate_onset_silence_profile(
+            QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE
         )
