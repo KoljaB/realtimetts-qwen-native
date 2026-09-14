@@ -14,7 +14,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PINNED_REF = "82b83b5898b702f3d861805d9fa61cbe1ba90b2f"
+PINNED_REF = "b47728bd6cb60331bd02afacb390e533479329b5"
 
 
 def test_cpu_metadata_and_native_pin() -> None:

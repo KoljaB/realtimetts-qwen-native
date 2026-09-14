@@ -46,7 +46,7 @@ where = ["src"]
 qwentts_cpp = ["py.typed", "lib/*"]
 
 [tool.qwentts-cpp-python]
-qwentts-ref = "82b83b5898b702f3d861805d9fa61cbe1ba90b2f"
+qwentts-ref = "b47728bd6cb60331bd02afacb390e533479329b5"
 qwentts-abi = 5
 
 [tool.cibuildwheel]

@@ -18,7 +18,7 @@ qwen/GGML libraries. It deliberately does **not** bundle GGUF model weights.
 Version 0.2.0+cpu2 is the local CPU-only package variant coordinated with RealtimeTTS 0.8.4.
 
 The release-tested native source is pinned to qwentts.cpp commit
-`82b83b5898b702f3d861805d9fa61cbe1ba90b2f`, which uses C ABI v5. The build
+`b47728bd6cb60331bd02afacb390e533479329b5`, which uses C ABI v5. The build
 script verifies `QT_ABI_VERSION == 5` before compiling, and all release workflows
 fetch that exact commit by default. The native `qt_version()` result remains the
 authoritative runtime build identity.
