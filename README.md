@@ -18,7 +18,7 @@ qwen/GGML libraries. It deliberately does **not** bundle GGUF model weights.
 Version 0.2.0+cpu2 is the local CPU-only package variant coordinated with RealtimeTTS 0.8.4.
 
 The release-tested native source is pinned to qwentts.cpp commit
-`30ea6696c8f3be5dcecbfdfe777cfea149091ac7`, which uses C ABI v5. The build
+`82b83b5898b702f3d861805d9fa61cbe1ba90b2f`, which uses C ABI v5. The build
 script verifies `QT_ABI_VERSION == 5` before compiling, and all release workflows
 fetch that exact commit by default. The native `qt_version()` result remains the
 authoritative runtime build identity.
@@ -303,3 +303,13 @@ audio, sr = tts.synthesize(
     ref_text="Transcript of the reference audio.",
 )
 ```
+
+## Private CPU pool build (2026-09-14)
+
+The `2pool1` build of 0.2.0+cpu2 uses one independently owned persistent
+GGML pthread pool per CPU context. Completed requests park their workers;
+cancellation, pause/resume and context teardown retain their contracts.
+Build for this i9-13900KF deployment with `GGML_OPENMP=OFF`,
+`GGML_LLAMAFILE=OFF`, `GGML_NATIVE=ON`, and `QWEN_CPU_ONLY=ON`.
+The model, quantization, sampling and codec ramp remain unchanged.
+This local host-specific wheel is not a public portable binary.

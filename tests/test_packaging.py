@@ -14,14 +14,14 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PINNED_REF = "30ea6696c8f3be5dcecbfdfe777cfea149091ac7"
+PINNED_REF = "82b83b5898b702f3d861805d9fa61cbe1ba90b2f"
 
 
 def test_cpu_metadata_and_native_pin() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert project["project"]["name"] == "realtimetts-qwen-native"
-    assert project["project"]["version"] == "0.2.0+cpu1"
+    assert project["project"]["version"] == "0.2.0+cpu2"
     assert "cuda12" not in project["project"].get("optional-dependencies", {})
     assert project["tool"]["qwentts-cpp-python"] == {
         "qwentts-ref": PINNED_REF,
