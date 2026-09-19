@@ -21,7 +21,7 @@ def test_cpu_metadata_and_native_pin() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert project["project"]["name"] == "realtimetts-qwen-native-cpu"
-    assert project["project"]["version"] == "0.3.0"
+    assert project["project"]["version"] == "0.3.0rc1"
     assert "cuda12" not in project["project"].get("optional-dependencies", {})
     assert project["tool"]["qwentts-cpp-python"] == {
         "qwentts-ref": PINNED_REF,
@@ -29,28 +29,19 @@ def test_cpu_metadata_and_native_pin() -> None:
     }
 
 
-def test_all_workflows_use_release_pin_and_windows_builds() -> None:
-    workflows = {
-        path.name: path.read_text(encoding="utf-8")
-        for path in (ROOT / ".github" / "workflows").glob("*.yml")
-    }
-
-    for name in ("publish.yml",):
-        text = workflows[name]
-        refs = set(
-            re.findall(r"(?:default:\s+|QWENTTS_REF:\s+)([0-9a-f]{40})", text)
-        )
-        assert refs == {PINNED_REF}, f"unexpected qwentts.cpp pin in {name}: {refs}"
-        assert "runs-on: windows-2022" in text
-        assert "delvewheel repair" in text
-        assert "auditwheel repair" in text
-
-    assert "manylinux_2_35_x86_64" in workflows["publish.yml"]
-    linux_release_architectures = "75-virtual;86-real;90-real;120-real;120-virtual"
-    windows_release_architectures = "75-real;75-virtual"
-    assert workflows["publish.yml"].count(linux_release_architectures) == 2
-    assert workflows["publish.yml"].count(windows_release_architectures) == 1
-    assert "limit=104857600" in workflows["publish.yml"]
+def test_cpu_workflow_has_four_platforms_exact_pin_and_no_publication() -> None:
+    text = (ROOT / ".github/workflows/cpu-wheels.yml").read_text(encoding="utf-8")
+    assert set(re.findall(r"ref:\s+([0-9a-f]{40})", text)) == {PINNED_REF}
+    for runner in ("ubuntu-22.04", "windows-2022", "macos-15-intel", "macos-15"):
+        assert f"runner: {runner}\n" in text
+    for repair in ("delvewheel repair", "auditwheel repair --only-plat", "delocate-wheel"):
+        assert repair in text
+    assert "manylinux_2_35_x86_64" in text
+    assert "ci_cpu_synthesis.py" in text
+    assert "python -m venv .ci-venv" in text
+    assert "twine upload" not in text
+    assert "--backend cpu" in text
+    assert "CMAKE_CUDA_ARCHITECTURES" not in text
 
 
 def test_setup_emits_one_python_abi_independent_platform_wheel(

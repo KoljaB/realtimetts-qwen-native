@@ -293,7 +293,7 @@ def main() -> int:
             "-DQWEN_SHARED=ON",
             "-DCMAKE_BUILD_TYPE=Release",
             "-DCMAKE_BUILD_RPATH_USE_ORIGIN=ON",
-            "-DCMAKE_INSTALL_RPATH=$ORIGIN",
+            "-DCMAKE_INSTALL_RPATH=" + ("@loader_path" if sys.platform == "darwin" else "$ORIGIN"),
             *PORTABLE_CMAKE_ARGUMENTS,
         ]
         if args.backend == "cpu":
