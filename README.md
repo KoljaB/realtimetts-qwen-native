@@ -69,7 +69,9 @@ Clone this repository and the pinned native source, then build the wheel and
 sdist:
 
 ```bash
-git clone https://github.com/KoljaB/realtimetts-qwen-native.git
+# Requires CMake, a C++17 compiler, and the platform's native build tools.
+git clone --branch codex/qwen-cpu-public-release https://github.com/KoljaB/realtimetts-qwen-native.git
+cd realtimetts-qwen-native
 git clone https://github.com/KoljaB/qwentts.cpp.git third_party/qwentts.cpp
 git -C third_party/qwentts.cpp checkout b47728bd6cb60331bd02afacb390e533479329b5
 python -m pip install --upgrade build
