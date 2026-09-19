@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import qwentts_cpp.__main__ as cli
-import qwentts_cpp._diagnostics as diagnostics
+import qwentts_cpp_cpu.__main__ as cli
+import qwentts_cpp_cpu._diagnostics as diagnostics
 
 
 def test_doctor_json_exit_status_reflects_errors(monkeypatch, capsys):

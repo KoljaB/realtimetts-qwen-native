@@ -9,8 +9,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-import qwentts_cpp._binding as binding
-from qwentts_cpp import (
+import qwentts_cpp_cpu._binding as binding
+from qwentts_cpp_cpu import (
     ABIMismatchError,
     OutOfMemoryError,
     QT_ABI_VERSION,
@@ -20,7 +20,7 @@ from qwentts_cpp import (
     QwenStatus,
     QwenTTS,
 )
-from qwentts_cpp._binding import QtAudio, QtInitParams, QtTTSParams
+from qwentts_cpp_cpu._binding import QtAudio, QtInitParams, QtTTSParams
 
 
 def test_abi5_ctypes_structs_match_qwen_header_field_order_and_offsets():

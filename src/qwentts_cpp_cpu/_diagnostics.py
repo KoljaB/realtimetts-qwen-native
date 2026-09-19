@@ -182,7 +182,7 @@ def build_doctor_report(
         report["native_error"] = str(exc)
         errors.append(str(exc))
         solutions.append(
-            "Install `realtimetts-qwen-native` from the matching CUDA wheel and run this doctor command again"
+            "Install `realtimetts-qwen-native-cpu` from the matching CUDA wheel and run this doctor command again"
         )
 
     if check_model:
@@ -204,13 +204,13 @@ def build_doctor_report(
             report["model_cache"] = {"ready": False, "detail": str(exc)}
             warnings.append(f"The {model} {quant} model is not fully present in the local cache")
             solutions.append(
-                f"Run `python -m qwentts_cpp prefetch --model {model} --quant {quant}` while online"
+                f"Run `python -m qwentts_cpp_cpu prefetch --model {model} --quant {quant}` while online"
             )
     return report
 
 
 def _print_human_report(report: dict[str, object]) -> None:
-    print(f"realtimetts-qwen-native {report['package_version']}")
+    print(f"realtimetts-qwen-native-cpu {report['package_version']}")
     print(f"Python: {report['python']} ({report['machine']})")
     print(f"Platform: {report['platform']}")
     print(f"Expected native ABI: {report['expected_native_abi']}")

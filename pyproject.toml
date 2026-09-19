@@ -3,9 +3,9 @@ requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "realtimetts-qwen-native"
-version = "0.2.0+cpu2"
-description = "RealtimeTTS-maintained native qwentts.cpp Python wheels"
+name = "realtimetts-qwen-native-cpu"
+version = "0.3.0"
+description = "Portable CPU-only native qwentts.cpp bindings for RealtimeTTS"
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Andres Marafioti" }, { name = "Kolja Beigel" }]
@@ -35,28 +35,25 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/KoljaB/realtimetts-qwen-native"
-Repository = "https://github.com/KoljaB/realtimetts-qwen-native"
+Homepage = "https://github.com/KoljaB/RealtimeTTS"
+Repository = "https://github.com/KoljaB/RealtimeTTS"
 Upstream = "https://github.com/andimarafioti/qwentts-cpp-python"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-qwentts_cpp = ["py.typed", "lib/*"]
+qwentts_cpp_cpu = ["py.typed", "lib/*"]
 
 [tool.qwentts-cpp-python]
 qwentts-ref = "b47728bd6cb60331bd02afacb390e533479329b5"
 qwentts-abi = 5
 
 [tool.cibuildwheel]
-build = "cp310-manylinux_x86_64 cp310-win_amd64"
+build = "cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64 cp314-manylinux_x86_64"
 skip = "*-musllinux_* *-manylinux_i686"
-before-build = "python scripts/build_native.py --backend cuda --clean"
-test-command = "python -c \"from qwentts_cpp import QwenLibrary; print(QwenLibrary().version())\""
+before-build = "python scripts/build_native.py --backend cpu --clean"
+test-command = "python -c \"from qwentts_cpp_cpu import QwenLibrary; print(QwenLibrary().version())\""
 
 [tool.cibuildwheel.linux]
 repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
-
-[tool.cibuildwheel.windows]
-repair-wheel-command = "delvewheel repair --analyze-existing --ignore-existing --add-path src/qwentts_cpp/lib --exclude cudart64_12.dll;cublas64_12.dll;cublasLt64_12.dll;nvcuda.dll -w {dest_dir} {wheel}"

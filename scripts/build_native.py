@@ -267,7 +267,7 @@ def main() -> int:
     root = Path(__file__).resolve().parents[1]
     source = Path(args.source).resolve()
     build_dir = Path(args.build_dir).resolve()
-    package_lib_dir = root / "src" / "qwentts_cpp" / "lib"
+    package_lib_dir = root / "src" / "qwentts_cpp_cpu" / "lib"
 
     if not args.skip_build and not source.is_dir():
         raise SystemExit(
@@ -297,7 +297,18 @@ def main() -> int:
             *PORTABLE_CMAKE_ARGUMENTS,
         ]
         if args.backend == "cpu":
-            cmake_args.append("-DGGML_BLAS=OFF")
+            cmake_args.extend(
+                [
+                    "-DGGML_BLAS=OFF",
+                    "-DGGML_OPENMP=OFF",
+                    "-DGGML_CUDA=OFF",
+                    "-DGGML_METAL=OFF",
+                    "-DGGML_VULKAN=OFF",
+                    "-DGGML_SYCL=OFF",
+                    "-DGGML_RPC=OFF",
+                    "-DGGML_BACKEND_DL=OFF",
+                ]
+            )
         elif args.backend == "cuda":
             cuda_compiler = find_cuda_compiler(args.cuda_compiler)
             cmake_args.extend(cuda_cmake_arguments(cuda_compiler))

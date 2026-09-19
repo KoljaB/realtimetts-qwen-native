@@ -540,7 +540,7 @@ def _native_exception(message: str, *, status: int | None = None) -> QwenTTSErro
     )
     if any(token in lowered for token in cuda_markers):
         return CudaRuntimeError(
-            f"{detail} Install a CUDA-12-compatible NVIDIA driver and run `python -m qwentts_cpp doctor`."
+            f"{detail} Install a CUDA-12-compatible NVIDIA driver and run `python -m qwentts_cpp_cpu doctor`."
         )
     return QwenTTSError(detail)
 
@@ -598,7 +598,7 @@ class QwenLibrary:
         except AttributeError as exc:
             raise ABIMismatchError(
                 f"The native library {self.path} is missing the required ABI {QT_ABI_VERSION} exports: {exc}. "
-                "Install a matching realtimetts-qwen-native wheel."
+                "Install a matching realtimetts-qwen-native-cpu wheel."
             ) from exc
         self.native_abi = self._verify_abi()
 
@@ -671,7 +671,7 @@ class QwenLibrary:
                 "CUDA runtime search order is NVIDIA pip packages, then Torch and system CUDA fallbacks.\n"
                 f"Discovered runtime directories:\n{directories}{preload_detail}\n"
                 "Install the qwen-cpp extra and a CUDA-12-compatible NVIDIA driver, then run "
-                "`python -m qwentts_cpp doctor`."
+                "`python -m qwentts_cpp_cpu doctor`."
             ) from exc
 
     def _bind(self) -> None:
@@ -760,7 +760,7 @@ class QwenLibrary:
         if native_abi != QT_ABI_VERSION:
             raise ABIMismatchError(
                 f"qwentts.cpp {label} reports ABI {native_abi}, but this Python binding requires "
-                f"ABI {QT_ABI_VERSION}. Install a matching realtimetts-qwen-native wheel."
+                f"ABI {QT_ABI_VERSION}. Install a matching realtimetts-qwen-native-cpu wheel."
             )
         return struct_type.from_buffer_copy(storage.raw[: ctypes.sizeof(struct_type)])
 

@@ -20,8 +20,8 @@ PINNED_REF = "b47728bd6cb60331bd02afacb390e533479329b5"
 def test_cpu_metadata_and_native_pin() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
-    assert project["project"]["name"] == "realtimetts-qwen-native"
-    assert project["project"]["version"] == "0.2.0+cpu2"
+    assert project["project"]["name"] == "realtimetts-qwen-native-cpu"
+    assert project["project"]["version"] == "0.3.0"
     assert "cuda12" not in project["project"].get("optional-dependencies", {})
     assert project["tool"]["qwentts-cpp-python"] == {
         "qwentts-ref": PINNED_REF,
@@ -69,7 +69,7 @@ def test_setup_emits_one_python_abi_independent_platform_wheel(
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-    distribution = captured["distclass"]({"name": "realtimetts-qwen-native", "version": "0.2.0"})
+    distribution = captured["distclass"]({"name": "realtimetts-qwen-native-cpu", "version": "0.2.0"})
     command = captured["cmdclass"]["bdist_wheel"](distribution)
     command.ensure_finalized()
     python_tag, abi_tag, platform_tag = command.get_tag()

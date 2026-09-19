@@ -8,7 +8,7 @@ uv.lock
 build/
 dist/
 *.egg-info/
-src/qwentts_cpp/lib/*
+src/qwentts_cpp_cpu/lib/*
 !src/qwentts_cpp/lib/.gitkeep
 
 third_party/

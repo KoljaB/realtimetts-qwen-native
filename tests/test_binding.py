@@ -7,7 +7,7 @@ import threading
 import numpy as np
 import pytest
 
-from qwentts_cpp import (
+from qwentts_cpp_cpu import (
     LibraryNotFoundError,
     QwenLibrary,
     QwenTTS,
@@ -19,7 +19,7 @@ from qwentts_cpp import (
     save_speaker_embedding,
     save_voice_ref,
 )
-from qwentts_cpp._binding import QtTTSParams, QtVoiceRef
+from qwentts_cpp_cpu._binding import QtTTSParams, QtVoiceRef
 
 
 def _pack_rvq_codes(codes, code_bits=11):

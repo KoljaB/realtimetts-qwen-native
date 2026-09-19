@@ -12,7 +12,7 @@ from ._diagnostics import (
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="python -m qwentts_cpp")
+    parser = argparse.ArgumentParser(prog="python -m qwentts_cpp_cpu")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     doctor = subparsers.add_parser("doctor", help="Diagnose native, CUDA, GPU, ABI, and model-cache setup")
