@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -21,12 +22,27 @@ def test_cpu_metadata_and_native_pin() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert project["project"]["name"] == "realtimetts-qwen-native-cpu"
-    assert project["project"]["version"] == "0.3.0rc1"
+    assert project["project"]["version"] == "0.3.0"
+    assert project["project"]["requires-python"] == ">=3.10"
+    assert project["project"]["dependencies"] == ["numpy", "huggingface-hub"]
+    assert project["project"]["urls"] == {
+        "Homepage": "https://github.com/KoljaB/realtimetts-qwen-native",
+        "Repository": "https://github.com/KoljaB/realtimetts-qwen-native",
+        "Upstream": "https://github.com/KoljaB/qwentts.cpp",
+    }
     assert "cuda12" not in project["project"].get("optional-dependencies", {})
     assert project["tool"]["qwentts-cpp-python"] == {
         "qwentts-ref": PINNED_REF,
         "qwentts-abi": 5,
     }
+
+    sys.path.insert(0, str(ROOT / "src"))
+    try:
+        import qwentts_cpp_cpu
+    finally:
+        sys.path.pop(0)
+    assert qwentts_cpp_cpu.__version__ == project["project"]["version"]
+    assert qwentts_cpp_cpu.CPU_ONLY is True
 
 
 def test_cpu_workflow_has_four_platforms_exact_pin_and_no_publication() -> None:

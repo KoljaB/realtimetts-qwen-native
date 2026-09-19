@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "realtimetts-qwen-native-cpu"
-version = "0.3.0rc1"
+version = "0.3.0"
 description = "Portable CPU-only native qwentts.cpp bindings for RealtimeTTS"
 readme = "README.md"
 license = "MIT"
@@ -22,6 +22,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Operating System :: Microsoft :: Windows :: Windows 10",
     "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Operating System :: MacOS",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
@@ -35,9 +36,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/KoljaB/RealtimeTTS"
-Repository = "https://github.com/KoljaB/RealtimeTTS"
-Upstream = "https://github.com/andimarafioti/qwentts-cpp-python"
+Homepage = "https://github.com/KoljaB/realtimetts-qwen-native"
+Repository = "https://github.com/KoljaB/realtimetts-qwen-native"
+Upstream = "https://github.com/KoljaB/qwentts.cpp"
 
 [tool.setuptools.packages.find]
 where = ["src"]

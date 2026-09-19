@@ -1,50 +1,83 @@
 # realtimetts-qwen-native-cpu
 
-Portable CPU-only native wheels for the RealtimeTTS Qwen server. The package
-distribution is realtimetts-qwen-native-cpu; its Python import is
-qwentts_cpp_cpu, so it can be installed beside the CUDA package without an
-import collision.
+`realtimetts-qwen-native-cpu` is the CPU-only native binding used by the
+RealtimeTTS Qwen CPU server. The distribution name is
+`realtimetts-qwen-native-cpu`; the Python import is `qwentts_cpp_cpu`, so it
+can be installed beside the CUDA package without an import collision.
 
-This candidate bundles the qualified qwentts.cpp CPU implementation at commit
-b47728bd6cb60331bd02afacb390e533479329b5 (C ABI v5), including the parked
-worker pool, strict affinity handling, onset-silence profiles, and CPU
-recovery path. It does not bundle model weights.
+Version 0.3.0 bundles the qualified `qwentts.cpp` CPU implementation at
+commit `b47728bd6cb60331bd02afacb390e533479329b5` (C ABI v5), including the
+parked worker pool, strict affinity handling, onset-silence profiles, and CPU
+recovery path. Model weights and voice references are not included.
 
-INSTALL
-Install the wheel in a fresh virtual environment:
+## Install
 
-  python -m pip install realtimetts_qwen_native_cpu-0.3.0-py3-none-linux_x86_64.whl
-  python -c "from qwentts_cpp_cpu import QwenLibrary; print(QwenLibrary().version())"
+In a fresh virtual environment, install the matching wheel from PyPI:
 
-The wheel contains no CUDA, Metal, Vulkan, OpenMP, or BLAS dependency. It is
-compiled with GGML_NATIVE=OFF and therefore does not encode this build host's
-CPU instruction set. The current x86_64 build uses the fixed AVX2/FMA/F16C/BMI2
-kernel set and requires a CPU with those features; it does not claim to run on
-every x86_64 machine. It also requires a compatible glibc runtime. Windows and
-macOS CPU wheels require their own platform builds.
+```bash
+python -m pip install --upgrade pip
+python -m pip install "realtimetts-qwen-native-cpu==0.3.0"
+python -c "import qwentts_cpp_cpu as q; print(q.__version__, q.QT_ABI_VERSION, q.CPU_ONLY)"
+```
 
-BUILD
-The source checkout must contain qwentts.cpp at the pinned revision:
+The release provides these CPU wheels:
 
-  python scripts/build_native.py --source /path/to/qwentts.cpp --backend cpu --clean
-  python -m build --sdist --wheel
+| Platform | Wheel baseline |
+| --- | --- |
+| Linux x86_64 | `manylinux_2_35_x86_64` (glibc 2.35 or newer) |
+| Windows x86_64 | `win_amd64` |
+| macOS Intel | `macosx_13_0_x86_64` |
+| macOS Apple Silicon | `macosx_11_0_arm64` |
 
-The build helper verifies the qwentts.cpp revision and ABI before configuring
-CMake. The resulting wheel bundles only libqwen, libggml, libggml-base, and
-libggml-cpu shared libraries with an ORIGIN runtime path.
+The native payload has no CUDA, Metal, Vulkan, OpenMP, or BLAS dependency.
+The x86_64 builds use `GGML_NATIVE=OFF` with a fixed AVX2/FMA/F16C/BMI2
+kernel baseline; they require a CPU with those features. The macOS arm64
+wheel is built separately for Apple Silicon. There is no runtime CPU
+dispatcher or generic x86 fallback.
 
-RUNTIME
-  from qwentts_cpp_cpu import QwenLibrary, QwenTTS
-  library = QwenLibrary()
-  assert library.cpu_only()
-  print(library.version())
+Only the four platform families above have bundled native wheels. On another
+platform, do not rely on an automatic source fallback: the sdist intentionally
+refuses to create a wheel without the pinned native library and a qualified
+`qwentts.cpp` checkout.
 
-Model files and voice references are separate from the wheel. The full
-RealtimeTTS CPU server supplies the HTTP streaming, segmentation, language
-detection, and recovery behavior on top of this binding.
+## Use
 
-SCOPE
-This is a local release candidate, not an uploaded PyPI artifact. It has been
-built and exercised on Linux x86_64 with the existing Q8 model pair. A public
-release still requires clean-host acceptance on supported Linux, Windows, and
-macOS CPU environments and platform-specific wheels.
+```python
+from qwentts_cpp_cpu import QwenLibrary, QwenTTS
+
+library = QwenLibrary()
+assert library.cpu_only()
+print(library.version())
+```
+
+Model files can be resolved from the configured Hugging Face repository:
+
+```python
+from qwentts_cpp_cpu import resolve_gguf_paths
+
+talker, codec = resolve_gguf_paths(
+    "Qwen/Qwen3-TTS-12Hz-0.6B-Base", quant="Q8_0"
+)
+```
+
+The full RealtimeTTS CPU server supplies HTTP streaming, segmentation,
+language detection, and recovery behavior on top of this binding.
+
+## Build from source
+
+Clone this repository and the pinned native source, then build the wheel and
+sdist:
+
+```bash
+git clone https://github.com/KoljaB/realtimetts-qwen-native.git
+git clone https://github.com/KoljaB/qwentts.cpp.git third_party/qwentts.cpp
+git -C third_party/qwentts.cpp checkout b47728bd6cb60331bd02afacb390e533479329b5
+python -m pip install --upgrade build
+python scripts/build_native.py --source third_party/qwentts.cpp --backend cpu --clean
+python -m build --sdist --wheel
+```
+
+The build helper verifies the native revision and ABI before configuring CMake.
+The wheel bundles only `qwen`, `ggml`, `ggml-base`, and `ggml-cpu` shared
+libraries with an origin-relative runtime path; it refuses a build with no
+native payload.
