@@ -69,7 +69,7 @@ def test_build_doctor_report_checks_native_abi_gpu_and_cached_model(tmp_path, mo
             assert path == library_path
 
         def version(self):
-            return "b91bca4 (2026-08-31)"
+            return "b47728b (2026-09-14)"
 
     monkeypatch.setattr(diagnostics, "find_library", lambda _path: library_path)
     monkeypatch.setattr(diagnostics, "QwenLibrary", Library)
@@ -130,3 +130,40 @@ def test_platform_contract_uses_confstr_when_libc_probe_is_empty(monkeypatch):
     monkeypatch.setattr(diagnostics.os, "confstr", lambda _name: "glibc 2.35", raising=False)
 
     assert diagnostics._platform_errors() == []
+
+
+def test_platform_contract_accepts_supported_macos_targets(monkeypatch):
+    monkeypatch.setattr(diagnostics.sys, "platform", "darwin")
+    monkeypatch.setattr(diagnostics.platform, "mac_ver", lambda: ("13.0", ("", "", ""), ""))
+
+    monkeypatch.setattr(diagnostics.platform, "machine", lambda: "x86_64")
+    assert diagnostics._platform_errors() == []
+
+    monkeypatch.setattr(diagnostics.platform, "machine", lambda: "arm64")
+    monkeypatch.setattr(diagnostics.platform, "mac_ver", lambda: ("11.0", ("", "", ""), ""))
+    assert diagnostics._platform_errors() == []
+
+
+def test_platform_contract_requires_macos_minimums(monkeypatch):
+    monkeypatch.setattr(diagnostics.sys, "platform", "darwin")
+    monkeypatch.setattr(diagnostics.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(diagnostics.platform, "mac_ver", lambda: ("12.6", ("", "", ""), ""))
+    assert diagnostics._platform_errors() == [
+        "macOS 12.6 is older than the supported minimum 13.0"
+    ]
+
+    monkeypatch.setattr(diagnostics.platform, "machine", lambda: "arm64")
+    monkeypatch.setattr(diagnostics.platform, "mac_ver", lambda: ("10.15", ("", "", ""), ""))
+    assert diagnostics._platform_errors() == [
+        "macOS 10.15 is older than the supported minimum 11.0"
+    ]
+
+
+def test_platform_contract_rejects_unsupported_architecture(monkeypatch):
+    monkeypatch.setattr(diagnostics.sys, "platform", "linux")
+    monkeypatch.setattr(diagnostics.platform, "machine", lambda: "arm64")
+    monkeypatch.setattr(diagnostics.platform, "libc_ver", lambda: ("glibc", "2.35"))
+
+    assert diagnostics._platform_errors() == [
+        "Unsupported machine arm64; the MVP supports x86_64 only"
+    ]

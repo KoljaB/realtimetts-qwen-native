@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import ctypes
 import os
 import threading
@@ -21,6 +22,12 @@ from qwentts_cpp_cpu import (
     QwenTTS,
 )
 from qwentts_cpp_cpu._binding import QtAudio, QtInitParams, QtTTSParams
+
+BUILD_NATIVE_SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "build_native.py"
+BUILD_NATIVE_SPEC = importlib.util.spec_from_file_location("qwentts_build_native", BUILD_NATIVE_SCRIPT)
+assert BUILD_NATIVE_SPEC and BUILD_NATIVE_SPEC.loader
+build_native = importlib.util.module_from_spec(BUILD_NATIVE_SPEC)
+BUILD_NATIVE_SPEC.loader.exec_module(build_native)
 
 
 def test_abi5_ctypes_structs_match_qwen_header_field_order_and_offsets():
@@ -302,7 +309,7 @@ def test_bundled_windows_library_reports_pinned_abi5():
     tts_defaults = library.default_tts_params()
 
     assert library.native_abi == 5
-    assert library.version().startswith("b91bca4")
+    assert library.version().startswith(build_native.PINNED_QWENTTS_REF[:7])
     assert init_defaults.abi_version == 5
     assert init_defaults.max_batch == 1
     assert init_defaults.codec_chunk_sec == pytest.approx(24.0)

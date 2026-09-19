@@ -95,9 +95,14 @@ def _hardware_errors(gpus: Sequence[GPUInfo]) -> list[str]:
 
 def _platform_errors() -> list[str]:
     errors: list[str] = []
-    machine = platform.machine().lower()
-    if machine not in {"amd64", "x86_64"}:
-        errors.append(f"Unsupported machine {platform.machine()}; the MVP supports x86_64 only")
+    machine_name = platform.machine()
+    machine = machine_name.lower()
+    is_macos = sys.platform == "darwin"
+    is_x86_64 = machine in {"amd64", "x86_64"}
+    is_arm64 = machine in {"arm64", "aarch64"}
+    if not is_x86_64 and not (is_macos and is_arm64):
+        supported_machines = "x86_64 or arm64 on macOS" if is_macos else "x86_64 only"
+        errors.append(f"Unsupported machine {machine_name}; the MVP supports {supported_machines}")
     if sys.platform == "win32":
         release = platform.release()
         if release not in {"10", "11"}:
@@ -119,6 +124,18 @@ def _platform_errors() -> list[str]:
             )
         elif _version_tuple(libc_version) < (2, 35):
             errors.append(f"glibc {libc_version} is older than the supported minimum 2.35")
+    elif is_macos:
+        if is_x86_64 or is_arm64:
+            macos_version = platform.mac_ver()[0]
+            version = _version_tuple(macos_version)
+            minimum = (11, 0) if is_arm64 else (13, 0)
+            minimum_text = ".".join(map(str, minimum))
+            if not version:
+                errors.append(f"Could not determine macOS version; macOS {minimum_text}+ is required")
+            elif version < minimum:
+                errors.append(
+                    f"macOS {macos_version} is older than the supported minimum {minimum_text}"
+                )
     else:
         errors.append(f"Unsupported platform {sys.platform}; the MVP supports Windows and glibc Linux")
     if not ((3, 10) <= sys.version_info[:2] <= (3, 14)):
