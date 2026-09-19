@@ -242,6 +242,52 @@ def test_stream_external_cancel_event_stops_native_and_context_is_reusable():
     assert not second_external.is_set(), "the generator must not take ownership of the caller's Event"
 
 
+def test_stream_external_cancel_discards_already_queued_chunks():
+    queued = threading.Event()
+    producer_exited = threading.Event()
+
+    class BurstNative(_FakeStreamingNative):
+        def qt_synthesize(self, _ctx, params_pointer, _audio_pointer):
+            self.calls += 1
+            params = params_pointer._obj
+            samples = (ctypes.c_float * 2)(0.5, -0.5)
+            try:
+                for _ in range(3):
+                    if not params.on_chunk(samples, len(samples), None):
+                        return int(QwenStatus.CANCELLED)
+                queued.set()
+                while not params.cancel(None):
+                    time.sleep(0.001)
+                return int(QwenStatus.CANCELLED)
+            finally:
+                producer_exited.set()
+
+    tts = _fake_tts()
+    tts.library._lib = BurstNative()
+    external = threading.Event()
+    stream = tts.stream(text="queued audio", cancel_event=external)
+    try:
+        next(stream)
+        assert queued.wait(1.0), "queue the remaining chunks before cancellation"
+        external.set()
+        assert list(stream) == []
+    finally:
+        stream.close()
+    assert producer_exited.is_set()
+    assert tts.last_stream_profile["producer_alive_after_close"] is False
+    assert external.is_set(), "the caller's cancellation event must remain set"
+
+    second_external = threading.Event()
+    second_stream = tts.stream(text="reusable context", cancel_event=second_external)
+    try:
+        next(second_stream)
+    finally:
+        second_stream.close()
+    assert tts.library._lib.calls == 2
+    assert tts.last_stream_profile["producer_alive_after_close"] is False
+    assert not second_external.is_set()
+
+
 def test_stream_profile_exposes_absolute_callback_timestamp():
     tts = _fake_tts()
     stream = tts.stream(text="profile")

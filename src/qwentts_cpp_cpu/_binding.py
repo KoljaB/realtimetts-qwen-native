@@ -1328,6 +1328,10 @@ class QwenTTS:
                 if isinstance(item, BaseException):
                     profile["consumer_error_ms"] = elapsed_ms()
                     raise item
+                # Native callbacks may already have queued audio when the caller
+                # cancels. Never deliver those stale chunks to the next consumer.
+                if is_cancelled():
+                    break
                 if "first_yield_ms" not in profile:
                     profile["first_yield_perf_counter_ns"] = time.perf_counter_ns()
                     profile["first_yield_ms"] = elapsed_ms()
