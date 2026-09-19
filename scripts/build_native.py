@@ -307,6 +307,7 @@ def main() -> int:
                     "-DGGML_SYCL=OFF",
                     "-DGGML_RPC=OFF",
                     "-DGGML_BACKEND_DL=OFF",
+                    "-DQWEN_CPU_ONLY=ON",
                 ]
             )
         elif args.backend == "cuda":
