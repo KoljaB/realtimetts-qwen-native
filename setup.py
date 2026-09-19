@@ -1,6 +1,8 @@
 import os
+from pathlib import Path
 
 from setuptools import Distribution, setup
+from setuptools.command.build_py import build_py
 
 try:
     from setuptools.command.bdist_wheel import bdist_wheel
@@ -13,6 +15,39 @@ class BinaryDistribution(Distribution):
 
     def has_ext_modules(self):
         return True
+
+
+def _native_payload_dir() -> Path:
+    return Path(__file__).resolve().parent / "src" / "qwentts_cpp_cpu" / "lib"
+
+
+def _validate_native_payload() -> None:
+    lib_dir = _native_payload_dir()
+    required = (
+        any(path.name.startswith("libqwen.") for path in lib_dir.iterdir() if path.is_file())
+        if lib_dir.is_dir()
+        else False
+    )
+    cpu_backend = (
+        any(path.name.startswith("libggml-cpu.") for path in lib_dir.iterdir() if path.is_file())
+        if lib_dir.is_dir()
+        else False
+    )
+    if not (required and cpu_backend):
+        raise RuntimeError(
+            "The CPU wheel requires bundled native libraries in "
+            f"{lib_dir}. Run scripts/build_native.py --backend cpu --clean "
+            "from the pinned qwentts.cpp checkout before building a wheel. "
+            "Building a wheel from the sdist without native payload is refused."
+        )
+
+
+class NativeBuildPy(build_py):
+    """Refuse a wheel that would install Python code without native CPU libraries."""
+
+    def run(self):
+        _validate_native_payload()
+        super().run()
 
 
 class PlatformWheel(bdist_wheel):
@@ -30,4 +65,7 @@ class PlatformWheel(bdist_wheel):
         return "py3", "none", platform
 
 
-setup(distclass=BinaryDistribution, cmdclass={"bdist_wheel": PlatformWheel})
+setup(
+    distclass=BinaryDistribution,
+    cmdclass={"bdist_wheel": PlatformWheel, "build_py": NativeBuildPy},
+)
