@@ -1,3 +1,4 @@
+include scripts/build_native.py
 # Native shared libraries are wheel-only; source archives remain source-only.
 exclude src/qwentts_cpp_cpu/lib/*
 recursive-exclude src/qwentts_cpp_cpu/lib *.so *.so.* *.dll *.dylib

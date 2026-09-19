@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 from setuptools import Distribution, setup
@@ -21,18 +22,28 @@ def _native_payload_dir() -> Path:
     return Path(__file__).resolve().parent / "src" / "qwentts_cpp_cpu" / "lib"
 
 
+def _has_native_library(lib_dir: Path, base_name: str) -> bool:
+    """Accept the platform-specific names emitted by qwentts.cpp builds."""
+    if not lib_dir.is_dir():
+        return False
+    exact_names = {
+        f"{base_name}.dll",
+        f"lib{base_name}.dll",
+        f"lib{base_name}.so",
+        f"lib{base_name}.dylib",
+    }
+    versioned_linux_prefix = f"lib{base_name}.so."
+    return any(
+        path.is_file()
+        and (path.name in exact_names or path.name.startswith(versioned_linux_prefix))
+        for path in lib_dir.iterdir()
+    )
+
+
 def _validate_native_payload() -> None:
     lib_dir = _native_payload_dir()
-    required = (
-        any(path.name.startswith("libqwen.") for path in lib_dir.iterdir() if path.is_file())
-        if lib_dir.is_dir()
-        else False
-    )
-    cpu_backend = (
-        any(path.name.startswith("libggml-cpu.") for path in lib_dir.iterdir() if path.is_file())
-        if lib_dir.is_dir()
-        else False
-    )
+    required = _has_native_library(lib_dir, "qwen")
+    cpu_backend = _has_native_library(lib_dir, "ggml-cpu")
     if not (required and cpu_backend):
         raise RuntimeError(
             "The CPU wheel requires bundled native libraries in "
@@ -62,6 +73,13 @@ class PlatformWheel(bdist_wheel):
 
     def get_tag(self):
         _python, _abi, platform = super().get_tag()
+        explicit_platform = os.environ.get("QWENTTS_CPP_WHEEL_PLATFORM")
+        if explicit_platform:
+            if not re.fullmatch(r"macosx_\d+_\d+_(?:x86_64|arm64)", explicit_platform):
+                raise ValueError(
+                    "QWENTTS_CPP_WHEEL_PLATFORM must be a macOS x86_64 or arm64 wheel tag"
+                )
+            platform = explicit_platform
         return "py3", "none", platform
 
 

@@ -20,21 +20,35 @@ jobs:
           - runner: ubuntu-22.04
             platform: linux-x86_64
             python: .ci-venv/bin/python
+            python_arch: x64
             macos_target: ""
+            macos_arch: ""
+            wheel_platform: ""
           - runner: windows-2022
             platform: windows-x86_64
             python: .ci-venv/Scripts/python.exe
+            python_arch: x64
             macos_target: ""
+            macos_arch: ""
+            wheel_platform: ""
           - runner: macos-15-intel
             platform: macos-x86_64
             python: .ci-venv/bin/python
+            python_arch: x64
             macos_target: "13.0"
+            macos_arch: x86_64
+            wheel_platform: macosx_13_0_x86_64
           - runner: macos-15
             platform: macos-arm64
             python: .ci-venv/bin/python
+            python_arch: arm64
             macos_target: "11.0"
+            macos_arch: arm64
+            wheel_platform: macosx_11_0_arm64
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_target }}
+      MACOS_ARCH: ${{ matrix.macos_arch }}
+      QWENTTS_CPP_WHEEL_PLATFORM: ${{ matrix.wheel_platform }}
     defaults:
       run:
         shell: bash
@@ -52,6 +66,12 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+          architecture: ${{ matrix.python_arch }}
+      - name: Verify macOS Python architecture
+        if: runner.os == 'macOS'
+        run: |
+          actual="$(python -c 'import platform; print(platform.machine())')"
+          test "$actual" = "$MACOS_ARCH"
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
       - name: Build tools
@@ -70,6 +90,7 @@ jobs:
           args=()
           if [[ "$RUNNER_OS" == "macOS" ]]; then
             args+=("--cmake-arg=-DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET")
+            args+=("--cmake-arg=-DCMAKE_OSX_ARCHITECTURES=$MACOS_ARCH")
           fi
           python scripts/build_native.py --source third_party/qwentts.cpp --backend cpu --clean --jobs 2 --cmake-arg=-G --cmake-arg=Ninja "${args[@]}"
       - name: Focused native tests
@@ -85,7 +106,7 @@ jobs:
         run: python -m delvewheel repair --analyze-existing --ignore-existing --add-path src/qwentts_cpp_cpu/lib --wheel-dir wheelhouse dist/*.whl
       - name: Repair macOS wheel
         if: runner.os == 'macOS'
-        run: delocate-wheel --require-archs "$(uname -m)" -w wheelhouse dist/*.whl
+        run: delocate-wheel --require-archs "$MACOS_ARCH" -w wheelhouse dist/*.whl
       - name: Fresh install and actual speech
         run: |
           python -m venv .ci-venv
