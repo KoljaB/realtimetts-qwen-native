@@ -23,7 +23,7 @@ from ._binding import (
 )
 from .models import GGUF_REPO, resolve_gguf_paths
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "ABIMismatchError",

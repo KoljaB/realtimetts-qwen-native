@@ -59,7 +59,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: KoljaB/qwentts.cpp
-          ref: b47728bd6cb60331bd02afacb390e533479329b5
+          ref: ec5336154a68f9e17f95c3d99b3b97489cb090a6
           path: third_party/qwentts.cpp
           submodules: recursive
           persist-credentials: false
@@ -95,7 +95,8 @@ jobs:
           python scripts/build_native.py --source third_party/qwentts.cpp --backend cpu --clean --jobs 2 --cmake-arg=-G --cmake-arg=Ninja "${args[@]}"
       - name: Focused native tests
         run: |
-          PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_binding.py tests/test_runtime_loader.py tests/test_cli.py tests/test_packaging.py tests/test_build_native.py
+          export QWEN_STARTUP_TEST_LIBRARY="$(python -c "from pathlib import Path; p=Path('src/qwentts_cpp_cpu/lib'); print(next(p.glob('*qwen.*')).resolve())")"
+          PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_binding.py tests/test_runtime_loader.py tests/test_cli.py tests/test_packaging.py tests/test_build_native.py tests/test_cpu_overlap.py tests/test_startup_priority_native.py
       - name: Build immutable distributions
         run: python -m build --wheel --sdist --outdir dist
       - name: Repair Linux wheel

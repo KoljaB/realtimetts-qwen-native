@@ -104,6 +104,16 @@ class QtAudio(ctypes.Structure):
     ]
 
 
+class QtCpuOptions(ctypes.Structure):
+    _fields_ = [
+        ("version", ctypes.c_int),
+        ("codec_threads", ctypes.c_int),
+        ("stream_frames", ctypes.c_int),
+        ("worker_mask", ctypes.c_uint64),
+        ("codec_mask", ctypes.c_uint64),
+    ]
+
+
 class QtInitParams(ctypes.Structure):
     _fields_ = [
         ("abi_version", ctypes.c_int),
@@ -698,6 +708,14 @@ class QwenLibrary:
             self._has_qt_init_cpu = True
         except AttributeError:
             self._has_qt_init_cpu = False
+        try:
+            lib.qt_init_cpu_ex.argtypes = [
+                ctypes.POINTER(QtInitParams), ctypes.c_int, ctypes.POINTER(QtCpuOptions)
+            ]
+            lib.qt_init_cpu_ex.restype = ctypes.c_void_p
+            self._has_qt_init_cpu_ex = True
+        except AttributeError:
+            self._has_qt_init_cpu_ex = False
         lib.qt_free.argtypes = [ctypes.c_void_p]
         lib.qt_free.restype = None
         lib.qt_synthesize.argtypes = [
@@ -821,6 +839,10 @@ class QwenTTS:
         max_batch: int = 1,
         codec_chunk_sec: float = 24.0,
         cpu_threads: int | None = None,
+        cpu_codec_threads: int = 0,
+        cpu_stream_frames: int = 0,
+        cpu_affinity: int = 0,
+        cpu_codec_affinity: int = 0,
     ):
         self.library = QwenLibrary(library_path)
         self._talker_path = Path(talker_path).expanduser().resolve()
@@ -839,6 +861,10 @@ class QwenTTS:
             max_batch=max_batch,
             codec_chunk_sec=codec_chunk_sec,
             cpu_threads=cpu_threads,
+            cpu_codec_threads=cpu_codec_threads,
+            cpu_stream_frames=cpu_stream_frames,
+            cpu_affinity=cpu_affinity,
+            cpu_codec_affinity=cpu_codec_affinity,
         )
 
     @classmethod
@@ -855,6 +881,10 @@ class QwenTTS:
         max_batch: int = 1,
         codec_chunk_sec: float = 24.0,
         cpu_threads: int | None = None,
+        cpu_codec_threads: int = 0,
+        cpu_stream_frames: int = 0,
+        cpu_affinity: int = 0,
+        cpu_codec_affinity: int = 0,
     ) -> "QwenTTS":
         from .models import resolve_gguf_paths
 
@@ -873,6 +903,10 @@ class QwenTTS:
             max_batch=max_batch,
             codec_chunk_sec=codec_chunk_sec,
             cpu_threads=cpu_threads,
+            cpu_codec_threads=cpu_codec_threads,
+            cpu_stream_frames=cpu_stream_frames,
+            cpu_affinity=cpu_affinity,
+            cpu_codec_affinity=cpu_codec_affinity,
         )
 
     def _init(
@@ -885,6 +919,10 @@ class QwenTTS:
         max_batch: int,
         codec_chunk_sec: float,
         cpu_threads: int | None,
+        cpu_codec_threads: int = 0,
+        cpu_stream_frames: int = 0,
+        cpu_affinity: int = 0,
+        cpu_codec_affinity: int = 0,
     ) -> None:
         keepalive: list[bytes] = []
         params = self.library.default_init_params()
@@ -894,7 +932,26 @@ class QwenTTS:
         params.clamp_fp16 = bool(clamp_fp16)
         params.max_batch = int(max_batch)
         params.codec_chunk_sec = float(codec_chunk_sec)
+        for name, value in (("cpu_codec_threads", cpu_codec_threads),
+                            ("cpu_stream_frames", cpu_stream_frames),
+                            ("cpu_affinity", cpu_affinity),
+                            ("cpu_codec_affinity", cpu_codec_affinity)):
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise TypeError(f"{name} must be an integer")
+        if not 0 <= cpu_codec_threads <= min(256, os.cpu_count() or 1):
+            raise ValueError("cpu_codec_threads exceeds the available CPU count")
+        if cpu_stream_frames not in (0, 1, 2, 4):
+            raise ValueError("cpu_stream_frames must be 0, 1, 2 or 4")
+        if not all(0 <= mask < 2**64 for mask in (cpu_affinity, cpu_codec_affinity)):
+            raise ValueError("CPU affinity masks must be unsigned 64-bit integers")
+        if cpu_codec_affinity and not cpu_codec_threads:
+            raise ValueError("cpu_codec_affinity requires cpu_codec_threads")
+        if cpu_codec_threads and max_batch > 1:
+            raise ValueError("CPU codec overlap requires max_batch=1")
+        scheduling = any((cpu_codec_threads, cpu_stream_frames, cpu_affinity, cpu_codec_affinity))
         if cpu_threads is None:
+            if scheduling:
+                raise ValueError("CPU scheduling options require cpu_threads")
             ctx = self.library._lib.qt_init(ctypes.byref(params))
         else:
             if isinstance(cpu_threads, bool) or not isinstance(cpu_threads, int):
@@ -910,7 +967,18 @@ class QwenTTS:
                 raise ABIMismatchError(
                     f"qt_init_cpu is unavailable; CPU initialization requires qwentts.cpp ABI {QT_ABI_VERSION}"
                 )
-            ctx = self.library._lib.qt_init_cpu(ctypes.byref(params), ctypes.c_int(cpu_threads))
+            if scheduling:
+                if not self.library._has_qt_init_cpu_ex:
+                    raise ABIMismatchError(
+                        "CPU scheduling options require a native library with qt_init_cpu_ex"
+                    )
+                cpu_options = QtCpuOptions(1, cpu_codec_threads, cpu_stream_frames,
+                                           cpu_affinity, cpu_codec_affinity)
+                ctx = self.library._lib.qt_init_cpu_ex(
+                    ctypes.byref(params), cpu_threads, ctypes.byref(cpu_options)
+                )
+            else:
+                ctx = self.library._lib.qt_init_cpu(ctypes.byref(params), ctypes.c_int(cpu_threads))
         if not ctx:
             raise _native_exception(self.library.last_error())
         self._ctx = ctx
@@ -1329,8 +1397,14 @@ class QwenTTS:
                     profile["consumer_error_ms"] = elapsed_ms()
                     raise item
                 # Native callbacks may already have queued audio when the caller
-                # cancels. Never deliver those stale chunks to the next consumer.
-                if is_cancelled():
+                # cancels. Only native callbacks may acknowledge a pause: the
+                # consumer can run while native workers are still computing.
+                cancelled = getattr(cancel_event, "cancelled", None)
+                consumer_cancelled = (
+                    cancelled() if callable(cancelled)
+                    else cancel_event is not None and cancel_event.is_set()
+                )
+                if internal_cancel_event.is_set() or consumer_cancelled:
                     break
                 if "first_yield_ms" not in profile:
                     profile["first_yield_perf_counter_ns"] = time.perf_counter_ns()

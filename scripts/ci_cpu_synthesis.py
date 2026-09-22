@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import platform
 import sys
 import time
@@ -34,6 +35,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--sample", required=True, type=Path)
     parser.add_argument("--cache-dir", required=True, type=Path)
+    parser.add_argument("--model-dir", type=Path, help="Existing pinned GGUF files")
     args = parser.parse_args()
     module_path = Path(native.__file__).resolve()
     assert module_path.is_relative_to(Path(sys.prefix).resolve()), module_path
@@ -44,7 +46,7 @@ def main():
     models = []
     for filename, expected in MODELS.items():
         print("Resolving checkpoint:", filename, flush=True)
-        path = Path(hf_hub_download(
+        path = args.model_dir / filename if args.model_dir else Path(hf_hub_download(
             repo_id="Serveurperso/Qwen3-TTS-GGUF", revision=MODEL_REVISION,
             filename=filename, cache_dir=str(args.cache_dir),
         ))
@@ -56,14 +58,35 @@ def main():
     assert reference.size and np.isfinite(reference).all()
     print("Loading the qualified 0.6B Base Q8 model ...", flush=True)
     started = time.perf_counter()
-    with native.QwenTTS(*models, use_fa=False, cpu_threads=2) as tts:
-        print("Synthesizing CPU speech ...", flush=True)
-        audio, sample_rate = tts.synthesize(
-            text="Portable CPU wheel smoke.", lang="english",
-            ref_audio_24k=np.ascontiguousarray(reference),
-            onset_silence_profile=native.QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
-            seed=42, max_new_tokens=20, do_sample=False,
-        )
+    outputs = {}
+    original_priority = os.environ.get("QWENTTS_CPU_STARTUP_PRIORITY")
+    try:
+        for mode, codec_threads, priority in (
+            ("serial", 0, "off"),
+            ("overlap", 2, "off"),
+            ("startup_priority", 2, "second_chunk"),
+        ):
+            os.environ["QWENTTS_CPU_STARTUP_PRIORITY"] = priority
+            with native.QwenTTS(*models, use_fa=False, cpu_threads=2,
+                               cpu_codec_threads=codec_threads, cpu_stream_frames=2) as tts:
+                print("Synthesizing CPU speech:", mode, flush=True)
+                chunks = list(tts.stream(
+                    text="Portable CPU wheel smoke.", lang="english",
+                    ref_audio_24k=np.ascontiguousarray(reference),
+                    onset_silence_profile=native.QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
+                    seed=42, max_new_tokens=20, do_sample=False,
+                ))
+            assert chunks and all(rate == 24000 for _, rate in chunks), mode
+            audio = np.concatenate([chunk for chunk, _ in chunks])
+            assert np.isfinite(audio).all() and np.max(np.abs(audio)) > 1e-6, mode
+            outputs[mode] = (np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes()
+        assert outputs["serial"] == outputs["overlap"] == outputs["startup_priority"]
+    finally:
+        if original_priority is None:
+            os.environ.pop("QWENTTS_CPU_STARTUP_PRIORITY", None)
+        else:
+            os.environ["QWENTTS_CPU_STARTUP_PRIORITY"] = original_priority
+    sample_rate = 24000
     audio = np.asarray(audio)
     assert sample_rate == 24000 and audio.size and np.isfinite(audio).all()
     assert float(np.max(np.abs(audio))) > 1e-6, "silent synthesis"
@@ -79,6 +102,8 @@ def main():
         "model_sha256": MODELS, "sample_rate": int(sample_rate),
         "samples": int(audio.size), "peak": float(np.max(np.abs(audio))),
         "elapsed_seconds": time.perf_counter() - started,
+        "pcm_sha256": {mode: hashlib.sha256(pcm).hexdigest() for mode, pcm in outputs.items()},
+        "serial_overlap_startup_pcm_equal": True,
     }
     Path("cpu-smoke.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result), flush=True)
