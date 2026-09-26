@@ -1,7 +1,5 @@
 name: Diagnose Mac demo shutdown
 on:
-  push:
-    branches: [codex/release-0.8.7-rehearsal]
   workflow_dispatch:
 permissions:
   contents: read
