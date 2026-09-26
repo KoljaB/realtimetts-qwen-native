@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 EXPECTED = {
-"realtimetts-0.8.9-py3-none-any.whl":"49e347b0392c9db7af732e115ac6f6ba8a517e9ffba151bff088ef41b5a83c21",
+"realtimetts-0.8.9-py3-none-any.whl":"6690f6652d69fa82b24a4b72f787ae970b62d05fdfed1c826ab9c30374ad73cf",
 "realtimetts_qwen_native_cpu-0.4.1-py3-none-manylinux_2_35_x86_64.whl":"d6f431393ab2fe2fda2d074a2752ca72e89f25e8392df0c3825b89c7ada29978",
 "realtimetts_qwen_native_cpu-0.4.1-py3-none-win_amd64.whl":"5db18d6e2052ae3fd1a300c549eb9af4ce3ef2a0eb16555bf71d927302957ff3",
 "realtimetts_qwen_native_cpu-0.4.1-py3-none-macosx_13_0_x86_64.whl":"6f355005a955f83e49472983c07a9f7aa8e4e8879637f6e524ba8831a23a3036",
