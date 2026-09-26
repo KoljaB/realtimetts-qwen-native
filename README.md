@@ -5,8 +5,8 @@ RealtimeTTS Qwen CPU server. The distribution name is
 `realtimetts-qwen-native-cpu`; the Python import is `qwentts_cpp_cpu`, so it
 can be installed beside the CUDA package without an import collision.
 
-Version 0.4.0 bundles the qualified `qwentts.cpp` CPU implementation at
-commit `ec5336154a68f9e17f95c3d99b3b97489cb090a6` (C ABI v5), including the
+Version 0.4.1 bundles the qualified `qwentts.cpp` CPU implementation at
+commit `791d7df22afc408b3786fbe694c421ce055ae5d5` (C ABI v5), including the
 parked worker pool, strict affinity handling, onset-silence profiles, and CPU
 recovery path. Model weights and voice references are not included.
 
@@ -20,7 +20,7 @@ are logical-CPU masks; zero leaves scheduling to the OS. Defaults remain serial.
 Set QWENTTS_CPU_STARTUP_PRIORITY=second_chunk before constructing a CPU context
 to prioritize the second decode block; unset/off preserves normal overlap.
 Requires overlap and a two/four-frame cadence, and is not a quality or sampling
-setting. See [0.4.0 release notes](CHANGELOG.md) for measurements and limitations.
+setting. See [CHANGELOG.md](CHANGELOG.md) for measurements and limitations.
 
 ## Install
 
@@ -28,7 +28,7 @@ In a fresh virtual environment, install the matching wheel from PyPI:
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install "realtimetts-qwen-native-cpu==0.4.0"
+python -m pip install "realtimetts-qwen-native-cpu==0.4.1"
 python -c "import qwentts_cpp_cpu as q; print(q.__version__, q.QT_ABI_VERSION, q.CPU_ONLY)"
 ```
 
@@ -85,7 +85,7 @@ sdist:
 git clone --branch codex/qwen-cpu-public-release https://github.com/KoljaB/realtimetts-qwen-native.git
 cd realtimetts-qwen-native
 git clone https://github.com/KoljaB/qwentts.cpp.git third_party/qwentts.cpp
-git -C third_party/qwentts.cpp checkout ec5336154a68f9e17f95c3d99b3b97489cb090a6
+git -C third_party/qwentts.cpp checkout 791d7df22afc408b3786fbe694c421ce055ae5d5
 git -C third_party/qwentts.cpp submodule update --init --recursive
 python -m pip install --upgrade build
 python scripts/build_native.py --source third_party/qwentts.cpp --backend cpu --clean

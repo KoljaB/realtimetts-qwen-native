@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "realtimetts-qwen-native-cpu"
-version = "0.4.0"
+version = "0.4.1"
 description = "Portable CPU-only native qwentts.cpp bindings for RealtimeTTS"
 readme = "README.md"
 license = "MIT"
@@ -47,7 +47,7 @@ where = ["src"]
 qwentts_cpp_cpu = ["py.typed", "lib/*"]
 
 [tool.qwentts-cpp-python]
-qwentts-ref = "ec5336154a68f9e17f95c3d99b3b97489cb090a6"
+qwentts-ref = "791d7df22afc408b3786fbe694c421ce055ae5d5"
 qwentts-abi = 5
 
 [tool.cibuildwheel]

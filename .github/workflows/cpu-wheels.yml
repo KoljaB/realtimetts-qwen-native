@@ -59,7 +59,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: KoljaB/qwentts.cpp
-          ref: ec5336154a68f9e17f95c3d99b3b97489cb090a6
+          ref: 791d7df22afc408b3786fbe694c421ce055ae5d5
           path: third_party/qwentts.cpp
           submodules: recursive
           persist-credentials: false
