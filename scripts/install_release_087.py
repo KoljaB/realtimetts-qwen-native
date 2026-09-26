@@ -5,16 +5,16 @@ from pathlib import Path
 import subprocess
 import sys
 EXPECTED = {
-"realtimetts-0.8.8-py3-none-any.whl":"2dd5bbc76f6d6a4333670626b40fda71c6327159999da7071b60d78f5757160f",
-"realtimetts_qwen_native_cpu-0.4.0-py3-none-manylinux_2_35_x86_64.whl":"9ab601df762767f48ea157d1def60847c8f9ec3503c0593b4801d75e9c47af15",
-"realtimetts_qwen_native_cpu-0.4.0-py3-none-win_amd64.whl":"9aedc3ca0a0714ef9d88f65e1c65380db6a352765950416a00f19f27bcdccca7",
-"realtimetts_qwen_native_cpu-0.4.0-py3-none-macosx_13_0_x86_64.whl":"94a6338e7bd5343a204566a51a9851ebf708072bccfc512fc43077a942568705",
-"realtimetts_qwen_native_cpu-0.4.0-py3-none-macosx_11_0_arm64.whl":"84e94ddb78981165ca15bd225c5bc37d426253063246b9225a7de5d56c86dc14",
+"realtimetts-0.8.9-py3-none-any.whl":"49e347b0392c9db7af732e115ac6f6ba8a517e9ffba151bff088ef41b5a83c21",
+"realtimetts_qwen_native_cpu-0.4.1-py3-none-manylinux_2_35_x86_64.whl":"d6f431393ab2fe2fda2d074a2752ca72e89f25e8392df0c3825b89c7ada29978",
+"realtimetts_qwen_native_cpu-0.4.1-py3-none-win_amd64.whl":"5db18d6e2052ae3fd1a300c549eb9af4ce3ef2a0eb16555bf71d927302957ff3",
+"realtimetts_qwen_native_cpu-0.4.1-py3-none-macosx_13_0_x86_64.whl":"6f355005a955f83e49472983c07a9f7aa8e4e8879637f6e524ba8831a23a3036",
+"realtimetts_qwen_native_cpu-0.4.1-py3-none-macosx_11_0_arm64.whl":"b7474a4a8e6789cb26c67f50e59ff994ff088cc5a62f773443df5f46d858f57c",
 }
 wheelhouse = Path("testpypi-wheelhouse")
 subprocess.run([sys.executable,"-m","pip","download","--no-deps","--only-binary=:all:",
                 "--index-url","https://test.pypi.org/simple","--dest",str(wheelhouse),
-                "realtimetts==0.8.8","realtimetts-qwen-native-cpu==0.4.0"],check=True)
+                "realtimetts==0.8.9","realtimetts-qwen-native-cpu==0.4.1"],check=True)
 wheels = sorted(wheelhouse.glob("*.whl"))
 assert len(wheels) == 2, wheels
 hashes = {}

@@ -1,4 +1,4 @@
-name: TestPyPI CPU release rehearsal 0.8.8
+name: TestPyPI CPU release rehearsal 0.8.9
 on:
   push:
     branches: [codex/release-0.8.7-rehearsal]

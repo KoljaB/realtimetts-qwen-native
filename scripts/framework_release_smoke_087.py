@@ -23,7 +23,7 @@ parser.add_argument("--cache-dir",default="model-cache")
 parser.add_argument("--sample",type=Path,default=Path("samples/pr-wheel-audio/cpu_greedy_20f_customvoice_bf16.wav"))
 args = parser.parse_args()
 device = "gpu" if args.gpu else "cpu"
-assert importlib.metadata.version("realtimetts") == "0.8.8"
+assert importlib.metadata.version("realtimetts") == "0.8.9"
 assert Path(RealtimeTTS.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
 if args.gpu:
     import qwentts_cpp as native
@@ -34,7 +34,7 @@ if args.gpu:
 else:
     import qwentts_cpp_cpu as native
     from RealtimeTTS.engines.qwen_cpu_engine import QwenCpuEngine as Engine
-    expected_native = "0.4.0"
+    expected_native = "0.4.1"
     extra = dict(cpu_threads=2,cpu_codec_threads=2,cpu_stream_frames=2,
                  onset_silence_recovery=True)
     os.environ["QWENTTS_CPU_STARTUP_PRIORITY"] = "second_chunk"
@@ -115,7 +115,7 @@ if os.environ.get("QWEN_TRACE_SHUTDOWN") == "1":
 subprocess.run(demo,check=True,timeout=60 if os.environ.get("QWEN_TRACE_SHUTDOWN") == "1" else 300)
 waves = list(Path(f"demo-{device}").glob("*.wav"))
 assert waves and all(p.stat().st_size > 44 for p in waves)
-result = {"framework":"0.8.8","native":expected_native,"device":device,
+result = {"framework":"0.8.9","native":expected_native,"device":device,
           "module":RealtimeTTS.__file__,"http_bytes":len(wave_data),"ws_pcm_bytes":len(ws_pcm),
           "demo_wavs":[p.name for p in waves],"installed_imports":True,"passed":True}
 Path(f"framework-{device}-smoke.json").write_text(json.dumps(result,indent=2),encoding="utf-8")
