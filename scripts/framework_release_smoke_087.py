@@ -63,7 +63,7 @@ ws_chunks = []
 with TestClient(create_app(server)) as client:
     assert client.get("/health").status_code == 200
     assert client.get("/v1/capabilities",headers=headers).status_code == 200
-    registered = client.post("/v1/voices",headers=headers,json={
+    registered = client.post("/v1/audio/voices",headers=headers,json={
         "name":"release-smoke","wav_b64":base64.b64encode(args.sample.read_bytes()).decode("ascii")})
     assert registered.status_code in (200,201), registered.text
     options = {"voice":"release-smoke","language":"english","max_new_tokens":32,
