@@ -1,0 +1,66 @@
+name: TestPyPI CPU release rehearsal 0.8.7
+on:
+  push:
+    branches: [codex/release-0.8.7-rehearsal]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rehearse:
+    name: TestPyPI ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            platform: linux-x86_64
+            python: .rehearsal/bin/python
+            arch: x64
+          - runner: windows-2022
+            platform: windows-x86_64
+            python: .rehearsal/Scripts/python.exe
+            arch: x64
+          - runner: macos-15-intel
+            platform: macos-x86_64
+            python: .rehearsal/bin/python
+            arch: x64
+          - runner: macos-15
+            platform: macos-arm64
+            python: .rehearsal/bin/python
+            arch: arm64
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          architecture: ${{ matrix.arch }}
+      - name: Fresh environment
+        run: |
+          python -m venv .rehearsal
+          "${{ matrix.python }}" -m pip install --upgrade pip
+      - name: Download exact TestPyPI artifacts and install normal dependencies from PyPI
+        run: '"${{ matrix.python }}" scripts/install_release_087.py'
+      - name: Installed native streaming parity
+        run: '"${{ matrix.python }}" scripts/ci_cpu_synthesis.py --sample samples/pr-wheel-audio/cpu_greedy_20f_customvoice_bf16.wav --cache-dir model-cache'
+      - name: Installed framework HTTP, WebSocket and package-only demo speech
+        run: '"${{ matrix.python }}" scripts/framework_release_smoke_087.py'
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: testpypi-${{ matrix.platform }}
+          path: |
+            downloaded-artifact-hashes.json
+            cpu-smoke.json
+            cpu-smoke.wav
+            framework-cpu-smoke.json
+            framework-cpu-http.wav
+            framework-cpu-ws.wav
+            demo-cpu/
+          if-no-files-found: error
