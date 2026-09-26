@@ -1,0 +1,27 @@
+name: Diagnose Mac demo shutdown
+on:
+  push:
+    branches: [codex/release-0.8.7-rehearsal]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install published rehearsal artifacts
+        run: |
+          python -m venv .rehearsal
+          .rehearsal/bin/python -m pip install --upgrade pip
+          .rehearsal/bin/python scripts/install_release_087.py
+      - name: Trace shutdown of the installed demo
+        env:
+          QWEN_TRACE_SHUTDOWN: "1"
+        run: .rehearsal/bin/python scripts/framework_release_smoke_087.py

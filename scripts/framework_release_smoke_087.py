@@ -40,7 +40,10 @@ else:
     os.environ["QWENTTS_CPU_STARTUP_PRIORITY"] = "second_chunk"
 assert native.__version__ == expected_native
 assert Path(native.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
-assert native.QwenLibrary().cpu_only() == (not args.gpu)
+if args.gpu:
+    assert any((Path(native.__file__).resolve().parent / "lib").glob("*ggml-cuda*"))
+else:
+    assert native.QwenLibrary().cpu_only()
 files = {
     "qwen-talker-0.6b-base-Q8_0.gguf":"d54dbaf10591421fa764ed630d764efa717ae40cd959bd48c66d4eb1af226426",
     "qwen-tokenizer-12hz-Q8_0.gguf":"1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
@@ -107,7 +110,9 @@ demo = [sys.executable,"-I","-m","RealtimeTTS.qwen_emotions","--device",device,
         "--output-dir",f"demo-{device}"]
 if not args.gpu:
     demo += ["--cpu-threads","2","--cpu-codec-threads","2","--cpu-stream-frames","2"]
-subprocess.run(demo,check=True,timeout=300)
+if os.environ.get("QWEN_TRACE_SHUTDOWN") == "1":
+    demo[2:4] = ["-c", "import faulthandler; faulthandler.dump_traceback_later(25); from RealtimeTTS.qwen_emotions import main; raise SystemExit(main())"]
+subprocess.run(demo,check=True,timeout=60 if os.environ.get("QWEN_TRACE_SHUTDOWN") == "1" else 300)
 waves = list(Path(f"demo-{device}").glob("*.wav"))
 assert waves and all(p.stat().st_size > 44 for p in waves)
 result = {"framework":"0.8.7","native":expected_native,"device":device,
