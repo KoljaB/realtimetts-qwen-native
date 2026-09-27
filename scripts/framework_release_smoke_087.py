@@ -35,8 +35,7 @@ else:
     import qwentts_cpp_cpu as native
     from RealtimeTTS.engines.qwen_cpu_engine import QwenCpuEngine as Engine
     expected_native = "0.4.2"
-    extra = dict(cpu_threads=2,cpu_codec_threads=2,cpu_stream_frames=2,
-                 onset_silence_recovery=True)
+    extra = dict(cpu_threads=2,cpu_codec_threads=2,cpu_stream_frames=2)
     os.environ["QWENTTS_CPU_STARTUP_PRIORITY"] = "second_chunk"
 assert native.__version__ == expected_native
 assert Path(native.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
