@@ -5,8 +5,9 @@ RealtimeTTS Qwen CPU server. The distribution name is
 `realtimetts-qwen-native-cpu`; the Python import is `qwentts_cpp_cpu`, so it
 can be installed beside the CUDA package without an import collision.
 
-Version 0.4.1 bundles the qualified `qwentts.cpp` CPU implementation at
-commit `791d7df22afc408b3786fbe694c421ce055ae5d5` (C ABI v5), including the
+Version 0.4.2 routes prompt diagnostics through the log callback so server logging
+can avoid blocking inference. It bundles the `qwentts.cpp` CPU implementation at
+commit `4d80a091a15881e32e9ede6aea38a9102c66f0da` (C ABI v5), including the
 parked worker pool, strict affinity handling, onset-silence profiles, and CPU
 recovery path. Model weights and voice references are not included.
 
@@ -28,7 +29,7 @@ In a fresh virtual environment, install the matching wheel from PyPI:
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install "realtimetts-qwen-native-cpu==0.4.1"
+python -m pip install "realtimetts-qwen-native-cpu==0.4.2"
 python -c "import qwentts_cpp_cpu as q; print(q.__version__, q.QT_ABI_VERSION, q.CPU_ONLY)"
 ```
 
@@ -85,7 +86,7 @@ sdist:
 git clone --branch codex/qwen-cpu-public-release https://github.com/KoljaB/realtimetts-qwen-native.git
 cd realtimetts-qwen-native
 git clone https://github.com/KoljaB/qwentts.cpp.git third_party/qwentts.cpp
-git -C third_party/qwentts.cpp checkout 791d7df22afc408b3786fbe694c421ce055ae5d5
+git -C third_party/qwentts.cpp checkout 4d80a091a15881e32e9ede6aea38a9102c66f0da
 git -C third_party/qwentts.cpp submodule update --init --recursive
 python -m pip install --upgrade build
 python scripts/build_native.py --source third_party/qwentts.cpp --backend cpu --clean

@@ -75,7 +75,7 @@ def test_qwentts_abi_must_match(tmp_path: Path) -> None:
 
 
 def test_release_pin_is_full_sha_and_abi_five() -> None:
-    assert build_native.PINNED_QWENTTS_REF == "791d7df22afc408b3786fbe694c421ce055ae5d5"
+    assert build_native.PINNED_QWENTTS_REF == "4d80a091a15881e32e9ede6aea38a9102c66f0da"
     assert build_native.PINNED_QWENTTS_ABI == 5
     assert build_native.PORTABLE_CMAKE_ARGUMENTS == ["-DGGML_NATIVE=OFF"]
 

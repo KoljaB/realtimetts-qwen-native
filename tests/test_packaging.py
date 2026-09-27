@@ -15,14 +15,14 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PINNED_REF = "791d7df22afc408b3786fbe694c421ce055ae5d5"
+PINNED_REF = "4d80a091a15881e32e9ede6aea38a9102c66f0da"
 
 
 def test_cpu_metadata_and_native_pin() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert project["project"]["name"] == "realtimetts-qwen-native-cpu"
-    assert project["project"]["version"] == "0.4.1"
+    assert project["project"]["version"] == "0.4.2"
     assert project["project"]["requires-python"] == ">=3.10"
     assert project["project"]["dependencies"] == ["numpy", "huggingface-hub"]
     assert project["project"]["urls"] == {
