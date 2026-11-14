@@ -1,3 +1,13 @@
+# CPU native 0.5.1
+
+Onset profile `qwen3_tts_12hz_0_6b_base_q8_icl_v1` for cloning with a reference text
+(qwentts.cpp `e2853de` accepts onset ids for such requests). In that mode the model opens
+with a pause of 4-5 frames; the profile bans the ids of that pause for the first three
+frames. Measured on one Linux CPU, German, 30 clips, prompt with 0.26 s of the pause after
+its sentence: the chunk carrying the first word arrived after 252 ms (p90 263) instead of
+340 ms (p90 443); without a reference text 149 ms (p90 244). The x-vector profiles stay
+limited to requests without a reference text and this one to requests with one.
+
 # CPU native 0.5.0
 
 Adds the ICL prefix cache: `QwenTTS.set_icl_prefix_cache(max_entries)`,

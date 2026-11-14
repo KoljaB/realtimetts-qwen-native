@@ -292,3 +292,15 @@ def test_icl_prefix_cache_needs_a_library_that_has_it():
     assert tts.icl_prefix_cache_stats() == {"entries": 0, "hits": 0, "misses": 0}
     with pytest.raises(ABIMismatchError):
         tts.set_icl_prefix_cache(4)
+
+
+def test_icl_onset_profile_is_declared_for_reference_text_requests_only():
+    from qwentts_cpp_cpu import QWEN3_TTS_12HZ_0_6B_BASE_Q8_ICL_V1_ONSET_PROFILE
+    from qwentts_cpp_cpu._binding import _ONSET_SILENCE_PROFILES
+
+    profile = _ONSET_SILENCE_PROFILES[QWEN3_TTS_12HZ_0_6B_BASE_Q8_ICL_V1_ONSET_PROFILE]
+    assert profile["icl"] is True and profile["frames"] == 3
+    assert len(set(profile["ids"])) == len(profile["ids"]) == 22
+    others = [p for name, p in _ONSET_SILENCE_PROFILES.items()
+              if name != QWEN3_TTS_12HZ_0_6B_BASE_Q8_ICL_V1_ONSET_PROFILE]
+    assert others and not any(p.get("icl") for p in others)

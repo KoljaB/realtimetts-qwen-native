@@ -27,7 +27,21 @@ QWEN3_TTS_12HZ_0_6B_BASE_Q8_CPU_RECOVERY_V2_ONSET_PROFILE = (
     "qwen3_tts_12hz_0_6b_base_q8_cpu_recovery_v2"
 )
 
+QWEN3_TTS_12HZ_0_6B_BASE_Q8_ICL_V1_ONSET_PROFILE = "qwen3_tts_12hz_0_6b_base_q8_icl_v1"
+
 _ONSET_SILENCE_PROFILES = {
+    # Reference-text (ICL) requests: the model continues from the reference and opens
+    # with a pause. These first-codebook ids made up that pause in 192 clips (German,
+    # French, Italian, 2026-11-14); the first 15 covered 435 of 785 silent leading
+    # frames and never carried speech, the last 7 are what the model fell back to.
+    QWEN3_TTS_12HZ_0_6B_BASE_Q8_ICL_V1_ONSET_PROFILE: {
+        "talker_sha256": "d54dbaf10591421fa764ed630d764efa717ae40cd959bd48c66d4eb1af226426",
+        "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+        "ids": (1431, 1362, 898, 1687, 859, 164, 142, 109, 444, 540, 1226, 1841, 729, 1657, 760,
+                34, 82, 977, 1159, 968, 710, 1480),
+        "frames": 3,
+        "icl": True,
+    },
     QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE: {
         "talker_sha256": "d54dbaf10591421fa764ed630d764efa717ae40cd959bd48c66d4eb1af226426",
         "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
@@ -1509,7 +1523,10 @@ class QwenTTS:
             raise ValueError("ref_codes requires ref_text")
         onset_config = self._onset_silence_config(onset_silence_profile)
         if onset_config is not None:
-            if ref_text or ref_codes is not None:
+            is_icl = bool(ref_text) or ref_codes is not None
+            if onset_config.get("icl") and not is_icl:
+                raise ValueError("this onset_silence_profile is only valid for reference-text (ICL) requests")
+            if is_icl and not onset_config.get("icl"):
                 raise ValueError("onset_silence_profile is only valid for x-vector-only requests, not ICL")
             if ref_audio_24k is None and ref_spk_emb is None:
                 raise ValueError("onset_silence_profile requires an x-vector voice reference")
