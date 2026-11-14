@@ -716,6 +716,16 @@ class QwenLibrary:
             self._has_qt_init_cpu_ex = True
         except AttributeError:
             self._has_qt_init_cpu_ex = False
+        try:
+            lib.qt_set_icl_prefix_cache.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.qt_set_icl_prefix_cache.restype = ctypes.c_int
+            lib.qt_icl_prefix_cache_stats.argtypes = [
+                ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.POINTER(ctypes.c_uint64)
+            ]
+            lib.qt_icl_prefix_cache_stats.restype = ctypes.c_int
+            self._has_qt_icl_prefix_cache = True
+        except AttributeError:
+            self._has_qt_icl_prefix_cache = False
         lib.qt_free.argtypes = [ctypes.c_void_p]
         lib.qt_free.restype = None
         lib.qt_synthesize.argtypes = [
@@ -1044,6 +1054,46 @@ class QwenTTS:
         if not self._ctx:
             raise QwenTTSError("QwenTTS context is closed")
         return self._ctx
+
+    @property
+    def supports_icl_prefix_cache(self) -> bool:
+        """Whether the loaded native library has the ICL prefix cache."""
+        return bool(self.library._has_qt_icl_prefix_cache)
+
+    def set_icl_prefix_cache(self, max_entries: int) -> None:
+        """Keep the voice-only prefill rows of up to ``max_entries`` cloned voices.
+
+        Applies to cloning with a reference text (``ref_text`` plus
+        ``ref_codes``). The first request of a voice computes and stores
+        the rows, later requests of that voice reuse them and prefill only
+        the rest. The audio is the same as without the cache. ``0`` turns
+        the cache off and frees it, which is the default.
+        """
+        max_entries = int(max_entries)
+        if not 0 <= max_entries <= 256:
+            raise ValueError("max_entries must be in [0, 256]")
+        if not self.library._has_qt_icl_prefix_cache:
+            raise ABIMismatchError(
+                "qt_set_icl_prefix_cache is unavailable; the ICL prefix cache needs a newer native library"
+            )
+        with self._lock:
+            rc = int(self.library._lib.qt_set_icl_prefix_cache(self._require_ctx(), max_entries))
+        if rc != 0:
+            raise QwenTTSError(self.library.last_error() or f"qt_set_icl_prefix_cache failed with status {rc}")
+
+    def icl_prefix_cache_stats(self) -> dict[str, int]:
+        """Voices cached now, and requests that reused or stored a prefix so far."""
+        if not self.library._has_qt_icl_prefix_cache:
+            return {"entries": 0, "hits": 0, "misses": 0}
+        hits = ctypes.c_uint64(0)
+        misses = ctypes.c_uint64(0)
+        with self._lock:
+            entries = int(
+                self.library._lib.qt_icl_prefix_cache_stats(
+                    self._require_ctx(), ctypes.byref(hits), ctypes.byref(misses)
+                )
+            )
+        return {"entries": entries, "hits": int(hits.value), "misses": int(misses.value)}
 
     def duration_sec_to_tokens(self, seconds: float) -> int:
         with self._lock:

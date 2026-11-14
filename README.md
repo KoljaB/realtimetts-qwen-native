@@ -5,9 +5,9 @@ RealtimeTTS Qwen CPU server. The distribution name is
 `realtimetts-qwen-native-cpu`; the Python import is `qwentts_cpp_cpu`, so it
 can be installed beside the CUDA package without an import collision.
 
-Version 0.4.2 routes prompt diagnostics through the log callback so server logging
-can avoid blocking inference. It bundles the `qwentts.cpp` CPU implementation at
-commit `4d80a091a15881e32e9ede6aea38a9102c66f0da` (C ABI v5), including the
+Version 0.5.0 adds the ICL prefix cache for cloning with a reference text
+(`QwenTTS.set_icl_prefix_cache`, see below). It bundles the `qwentts.cpp` CPU implementation at
+commit `a740148bc84e7265a07544a3eb80850c6e7672ed` (C ABI v5), including the
 parked worker pool, strict affinity handling, onset-silence profiles, and CPU
 recovery path. Model weights and voice references are not included.
 
@@ -23,13 +23,24 @@ to prioritize the second decode block; unset/off preserves normal overlap.
 Requires overlap and a two/four-frame cadence, and is not a quality or sampling
 setting. See [CHANGELOG.md](CHANGELOG.md) for measurements and limitations.
 
+## Cloning with a reference text: prefix cache
+
+Cloning with `ref_text` and `ref_codes` prefills the reference on every request.
+`tts.set_icl_prefix_cache(16)` keeps the rows that depend on the voice alone
+(prompt head and reference text) for up to 16 voices; later requests of a voice
+prefill only the rest. The audio is the same as without the cache. It is off by
+default, `set_icl_prefix_cache(0)` frees it, and `icl_prefix_cache_stats()`
+reports entries, hits and misses. `ref_spk_emb` may come from a longer recording
+than `ref_codes`: the speaker embedding and the prosody prompt are independent
+inputs.
+
 ## Install
 
 In a fresh virtual environment, install the matching wheel from PyPI:
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install "realtimetts-qwen-native-cpu==0.4.2"
+python -m pip install "realtimetts-qwen-native-cpu==0.5.0"
 python -c "import qwentts_cpp_cpu as q; print(q.__version__, q.QT_ABI_VERSION, q.CPU_ONLY)"
 ```
 
@@ -86,7 +97,7 @@ sdist:
 git clone --branch codex/qwen-cpu-public-release https://github.com/KoljaB/realtimetts-qwen-native.git
 cd realtimetts-qwen-native
 git clone https://github.com/KoljaB/qwentts.cpp.git third_party/qwentts.cpp
-git -C third_party/qwentts.cpp checkout 4d80a091a15881e32e9ede6aea38a9102c66f0da
+git -C third_party/qwentts.cpp checkout a740148bc84e7265a07544a3eb80850c6e7672ed
 git -C third_party/qwentts.cpp submodule update --init --recursive
 python -m pip install --upgrade build
 python scripts/build_native.py --source third_party/qwentts.cpp --backend cpu --clean

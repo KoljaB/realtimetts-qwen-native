@@ -241,3 +241,54 @@ def test_extract_voice_ref_copies_native_buffers_before_free():
     assert ref.ref_spk_emb[0] == np.float32(0.25)
     assert ref.ref_codes[0, 0] == 1
     assert tts.last_extract_voice_ref_profile["ref_spk_dim"] == 3
+
+
+class _FakeCacheLib:
+    def __init__(self):
+        self.calls = []
+
+    def qt_set_icl_prefix_cache(self, ctx, max_entries):
+        self.calls.append((ctx, max_entries))
+        return 0
+
+    def qt_icl_prefix_cache_stats(self, ctx, hits, misses):
+        hits._obj.value = 5
+        misses._obj.value = 2
+        return 2
+
+
+class _FakeCacheLibrary:
+    def __init__(self, lib, supported=True):
+        self._lib = lib
+        self._has_qt_icl_prefix_cache = supported
+
+    def last_error(self):
+        return "fake error"
+
+
+def _cache_tts(supported=True):
+    tts = QwenTTS.__new__(QwenTTS)
+    tts.library = _FakeCacheLibrary(_FakeCacheLib(), supported)
+    tts._ctx = 123
+    tts._lock = threading.Lock()
+    return tts
+
+
+def test_icl_prefix_cache_is_set_and_reported():
+    tts = _cache_tts()
+    assert tts.supports_icl_prefix_cache
+    tts.set_icl_prefix_cache(16)
+    assert tts.library._lib.calls == [(123, 16)]
+    assert tts.icl_prefix_cache_stats() == {"entries": 2, "hits": 5, "misses": 2}
+    with pytest.raises(ValueError):
+        tts.set_icl_prefix_cache(257)
+
+
+def test_icl_prefix_cache_needs_a_library_that_has_it():
+    from qwentts_cpp_cpu._binding import ABIMismatchError
+
+    tts = _cache_tts(supported=False)
+    assert not tts.supports_icl_prefix_cache
+    assert tts.icl_prefix_cache_stats() == {"entries": 0, "hits": 0, "misses": 0}
+    with pytest.raises(ABIMismatchError):
+        tts.set_icl_prefix_cache(4)
