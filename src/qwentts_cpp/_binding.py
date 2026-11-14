@@ -20,7 +20,21 @@ QT_ABI_VERSION = 5
 RVQ_CODE_BITS = 11
 QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE = "qwen3_tts_12hz_0_6b_base_q8_v1"
 
+QWEN3_TTS_12HZ_0_6B_BASE_Q8_ICL_V1_ONSET_PROFILE = "qwen3_tts_12hz_0_6b_base_q8_icl_v1"
+
 _ONSET_SILENCE_PROFILES = {
+    # Reference-text (ICL) requests: the model continues from the reference and opens
+    # with a pause. These first-codebook ids made up that pause in 192 clips (German,
+    # French, Italian, 2026-11-14); the first 15 covered 435 of 785 silent leading
+    # frames and never carried speech, the last 7 are what the model fell back to.
+    QWEN3_TTS_12HZ_0_6B_BASE_Q8_ICL_V1_ONSET_PROFILE: {
+        "talker_sha256": "d54dbaf10591421fa764ed630d764efa717ae40cd959bd48c66d4eb1af226426",
+        "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+        "ids": (1431, 1362, 898, 1687, 859, 164, 142, 109, 444, 540, 1226, 1841, 729, 1657, 760,
+                34, 82, 977, 1159, 968, 710, 1480),
+        "frames": 3,
+        "icl": True,
+    },
     QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE: {
         "talker_sha256": "d54dbaf10591421fa764ed630d764efa717ae40cd959bd48c66d4eb1af226426",
         "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
@@ -669,6 +683,16 @@ class QwenLibrary:
         lib.qt_tts_default_params.restype = None
         lib.qt_init.argtypes = [ctypes.POINTER(QtInitParams)]
         lib.qt_init.restype = ctypes.c_void_p
+        try:
+            lib.qt_set_icl_prefix_cache.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.qt_set_icl_prefix_cache.restype = ctypes.c_int
+            lib.qt_icl_prefix_cache_stats.argtypes = [
+                ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.POINTER(ctypes.c_uint64)
+            ]
+            lib.qt_icl_prefix_cache_stats.restype = ctypes.c_int
+            self._has_qt_icl_prefix_cache = True
+        except AttributeError:
+            self._has_qt_icl_prefix_cache = False
         lib.qt_free.argtypes = [ctypes.c_void_p]
         lib.qt_free.restype = None
         lib.qt_synthesize.argtypes = [
@@ -908,6 +932,46 @@ class QwenTTS:
         if not self._ctx:
             raise QwenTTSError("QwenTTS context is closed")
         return self._ctx
+
+    @property
+    def supports_icl_prefix_cache(self) -> bool:
+        """Whether the loaded native library has the ICL prefix cache."""
+        return bool(self.library._has_qt_icl_prefix_cache)
+
+    def set_icl_prefix_cache(self, max_entries: int) -> None:
+        """Keep the voice-only prefill rows of up to ``max_entries`` cloned voices.
+
+        Applies to cloning with a reference text (``ref_text`` plus
+        ``ref_codes``). The first request of a voice computes and stores
+        the rows, later requests of that voice reuse them and prefill only
+        the rest. The audio is the same as without the cache. ``0`` turns
+        the cache off and frees it, which is the default.
+        """
+        max_entries = int(max_entries)
+        if not 0 <= max_entries <= 256:
+            raise ValueError("max_entries must be in [0, 256]")
+        if not self.library._has_qt_icl_prefix_cache:
+            raise ABIMismatchError(
+                "qt_set_icl_prefix_cache is unavailable; the ICL prefix cache needs a newer native library"
+            )
+        with self._lock:
+            rc = int(self.library._lib.qt_set_icl_prefix_cache(self._require_ctx(), max_entries))
+        if rc != 0:
+            raise QwenTTSError(self.library.last_error() or f"qt_set_icl_prefix_cache failed with status {rc}")
+
+    def icl_prefix_cache_stats(self) -> dict[str, int]:
+        """Voices cached now, and requests that reused or stored a prefix so far."""
+        if not self.library._has_qt_icl_prefix_cache:
+            return {"entries": 0, "hits": 0, "misses": 0}
+        hits = ctypes.c_uint64(0)
+        misses = ctypes.c_uint64(0)
+        with self._lock:
+            entries = int(
+                self.library._lib.qt_icl_prefix_cache_stats(
+                    self._require_ctx(), ctypes.byref(hits), ctypes.byref(misses)
+                )
+            )
+        return {"entries": entries, "hits": int(hits.value), "misses": int(misses.value)}
 
     def duration_sec_to_tokens(self, seconds: float) -> int:
         with self._lock:
@@ -1312,7 +1376,10 @@ class QwenTTS:
             raise ValueError("ref_codes requires ref_text")
         onset_config = self._onset_silence_config(onset_silence_profile)
         if onset_config is not None:
-            if ref_text or ref_codes is not None:
+            is_icl = bool(ref_text) or ref_codes is not None
+            if onset_config.get("icl") and not is_icl:
+                raise ValueError("this onset_silence_profile is only valid for reference-text (ICL) requests")
+            if is_icl and not onset_config.get("icl"):
                 raise ValueError("onset_silence_profile is only valid for x-vector-only requests, not ICL")
             if ref_audio_24k is None and ref_spk_emb is None:
                 raise ValueError("onset_silence_profile requires an x-vector voice reference")

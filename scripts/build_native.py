@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 
-PINNED_QWENTTS_REF = "b91bca43f9adc5df839161ce4c88b0f6743b27ff"
+PINNED_QWENTTS_REF = "e2853ded14f820dcf550c9bf5e96037af80479be"
 PINNED_QWENTTS_ABI = 5
 PORTABLE_CMAKE_ARGUMENTS = [
     # Binary wheels must run on CPUs other than the build host. ggml otherwise

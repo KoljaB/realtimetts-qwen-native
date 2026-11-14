@@ -14,14 +14,14 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PINNED_REF = "b91bca43f9adc5df839161ce4c88b0f6743b27ff"
+PINNED_REF = "e2853ded14f820dcf550c9bf5e96037af80479be"
 
 
 def test_cuda_runtime_extra_and_native_pin() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert project["project"]["name"] == "realtimetts-qwen-native"
-    assert project["project"]["version"] == "0.2.0"
+    assert project["project"]["version"] == "0.2.1"
     cuda12 = project["project"]["optional-dependencies"]["cuda12"]
     assert any(requirement.startswith("nvidia-cuda-runtime-cu12") for requirement in cuda12)
     assert any(requirement.startswith("nvidia-cublas-cu12") for requirement in cuda12)
@@ -71,7 +71,7 @@ def test_setup_emits_one_python_abi_independent_platform_wheel(
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-    distribution = captured["distclass"]({"name": "realtimetts-qwen-native", "version": "0.2.0"})
+    distribution = captured["distclass"]({"name": "realtimetts-qwen-native", "version": "0.2.1"})
     command = captured["cmdclass"]["bdist_wheel"](distribution)
     command.ensure_finalized()
     python_tag, abi_tag, platform_tag = command.get_tag()

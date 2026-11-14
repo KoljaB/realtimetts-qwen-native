@@ -69,7 +69,7 @@ def test_build_doctor_report_checks_native_abi_gpu_and_cached_model(tmp_path, mo
             assert path == library_path
 
         def version(self):
-            return "b91bca4 (2026-08-31)"
+            return "e2853de (2026-11-14)"
 
     monkeypatch.setattr(diagnostics, "find_library", lambda _path: library_path)
     monkeypatch.setattr(diagnostics, "QwenLibrary", Library)

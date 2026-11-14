@@ -15,10 +15,13 @@ qwen/GGML libraries. It deliberately does **not** bundle GGUF model weights.
 
 ## Release status
 
-Version 0.2.0 is the native package coordinated with RealtimeTTS 0.8.4.
+Version 0.2.1 (local build, 2026-11-14) follows the CPU package 0.5.1: the ICL prefix cache
+(`QwenTTS.set_icl_prefix_cache`) and the onset profile `qwen3_tts_12hz_0_6b_base_q8_icl_v1` for
+cloning with a reference text, on qwentts.cpp `e2853de`. Version 0.2.0 was the native package
+coordinated with RealtimeTTS 0.8.4.
 
 The release-tested native source is pinned to qwentts.cpp commit
-`b91bca43f9adc5df839161ce4c88b0f6743b27ff`, which uses C ABI v5. The build
+`e2853ded14f820dcf550c9bf5e96037af80479be`, which uses C ABI v5. The build
 script verifies `QT_ABI_VERSION == 5` before compiling, and all release workflows
 fetch that exact commit by default. The native `qt_version()` result remains the
 authoritative runtime build identity.
