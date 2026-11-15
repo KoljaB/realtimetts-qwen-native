@@ -7,6 +7,8 @@ from ._binding import (
     QT_ABI_VERSION,
     QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE,
     QWEN3_TTS_12HZ_0_6B_BASE_Q8_ICL_V1_ONSET_PROFILE,
+    QWEN3_TTS_12HZ_1_7B_BASE_Q8_ONSET_PROFILE,
+    QWEN3_TTS_12HZ_1_7B_BASE_Q8_ICL_V1_ONSET_PROFILE,
     RVQ_CODE_BITS,
     QwenLibrary,
     QwenStatus,
@@ -22,7 +24,7 @@ from ._binding import (
 )
 from .models import GGUF_REPO, resolve_gguf_paths
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 __all__ = [
     "ABIMismatchError",
@@ -34,6 +36,8 @@ __all__ = [
     "QT_ABI_VERSION",
     "QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE",
     "QWEN3_TTS_12HZ_0_6B_BASE_Q8_ICL_V1_ONSET_PROFILE",
+    "QWEN3_TTS_12HZ_1_7B_BASE_Q8_ONSET_PROFILE",
+    "QWEN3_TTS_12HZ_1_7B_BASE_Q8_ICL_V1_ONSET_PROFILE",
     "RVQ_CODE_BITS",
     "QwenLibrary",
     "QwenStatus",

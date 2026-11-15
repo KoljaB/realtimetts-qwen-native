@@ -15,6 +15,10 @@ qwen/GGML libraries. It deliberately does **not** bundle GGUF model weights.
 
 ## Release status
 
+Version 0.2.2 (local build, 2026-11-15) adds the onset profiles of Qwen3-TTS 1.7B Base Q8_0:
+`qwen3_tts_12hz_1_7b_base_q8_v1` (speaker-only) and `qwen3_tts_12hz_1_7b_base_q8_icl_v1`
+(reference text). The native library is the one of 0.2.1.
+
 Version 0.2.1 (local build, 2026-11-14) follows the CPU package 0.5.1: the ICL prefix cache
 (`QwenTTS.set_icl_prefix_cache`) and the onset profile `qwen3_tts_12hz_0_6b_base_q8_icl_v1` for
 cloning with a reference text, on qwentts.cpp `e2853de`. Version 0.2.0 was the native package

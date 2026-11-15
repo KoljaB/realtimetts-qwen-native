@@ -21,8 +21,35 @@ RVQ_CODE_BITS = 11
 QWEN3_TTS_12HZ_0_6B_BASE_Q8_ONSET_PROFILE = "qwen3_tts_12hz_0_6b_base_q8_v1"
 
 QWEN3_TTS_12HZ_0_6B_BASE_Q8_ICL_V1_ONSET_PROFILE = "qwen3_tts_12hz_0_6b_base_q8_icl_v1"
+QWEN3_TTS_12HZ_1_7B_BASE_Q8_ONSET_PROFILE = "qwen3_tts_12hz_1_7b_base_q8_v1"
+QWEN3_TTS_12HZ_1_7B_BASE_Q8_ICL_V1_ONSET_PROFILE = "qwen3_tts_12hz_1_7b_base_q8_icl_v1"
+_QWEN3_TTS_12HZ_1_7B_BASE_Q8_ASSETS = {
+    "talker_sha256": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+}
 
 _ONSET_SILENCE_PROFILES = {
+    # 1.7B Base Q8_0 (2026-11-15, GPU, RTX 4090). Both sizes share the codec, and the opening
+    # pause is made of the same first-codebook ids as with 0.6B.
+    # Reference text: 66 clips (German, French, Italian) without a ban had 241 silent opening
+    # frames; the 0.6B ICL ids made up 225 of them and id 2 another 7; none of the 23 ever
+    # carried speech (1,143 speech frames). Banned for 4 frames: first word inside the audio
+    # 345 -> 130 ms median (German), 445 -> 80 (French), 345 -> 120 (Italian).
+    QWEN3_TTS_12HZ_1_7B_BASE_Q8_ICL_V1_ONSET_PROFILE: {
+        **_QWEN3_TTS_12HZ_1_7B_BASE_Q8_ASSETS,
+        "ids": (1431, 1362, 898, 1687, 859, 164, 142, 109, 444, 540, 1226, 1841, 729, 1657, 760,
+                34, 82, 977, 1159, 968, 710, 1480, 2),
+        "frames": 4,
+        "icl": True,
+    },
+    # Speaker-only (x-vector): 54 clips (English, Russian, German) had 225 silent opening
+    # frames; the 0.6B x-vector ids made up 203 of them and never carried speech (906 speech
+    # frames). Banned for 3 frames: first word 435-450 -> 75-140 ms median.
+    QWEN3_TTS_12HZ_1_7B_BASE_Q8_ONSET_PROFILE: {
+        **_QWEN3_TTS_12HZ_1_7B_BASE_Q8_ASSETS,
+        "ids": (212, 215, 462, 619, 1181, 1524, 1657, 1995),
+        "frames": 3,
+    },
     # Reference-text (ICL) requests: the model continues from the reference and opens
     # with a pause. These first-codebook ids made up that pause in 192 clips (German,
     # French, Italian, 2026-11-14); the first 15 covered 435 of 785 silent leading
