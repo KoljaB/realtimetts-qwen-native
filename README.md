@@ -15,11 +15,11 @@ qwen/GGML libraries. It deliberately does **not** bundle GGUF model weights.
 
 ## Release status
 
-Version 0.2.2 (local build, 2026-11-15) adds the onset profiles of Qwen3-TTS 1.7B Base Q8_0:
+Version 0.2.2 (2026-11-18) adds the onset profiles of Qwen3-TTS 1.7B Base Q8_0:
 `qwen3_tts_12hz_1_7b_base_q8_v1` (speaker-only) and `qwen3_tts_12hz_1_7b_base_q8_icl_v1`
 (reference text). The native library is the one of 0.2.1.
 
-Version 0.2.1 (local build, 2026-11-14) follows the CPU package 0.5.1: the ICL prefix cache
+Version 0.2.1 (not published; its changes ship in 0.2.2) follows the CPU package 0.5.1: the ICL prefix cache
 (`QwenTTS.set_icl_prefix_cache`) and the onset profile `qwen3_tts_12hz_0_6b_base_q8_icl_v1` for
 cloning with a reference text, on qwentts.cpp `e2853de`. Version 0.2.0 was the native package
 coordinated with RealtimeTTS 0.8.4.
@@ -62,8 +62,8 @@ not speaker-specific: any x-vector voice on the validated model pair can use it.
 
 | Target | Wheel tag | Minimum runtime | Status |
 | --- | --- | --- | --- |
-| Windows 10/11 x64, NVIDIA | `py3-none-win_amd64` | AVX2/FMA/F16C/BMI2 CPU, CUDA-12-compatible driver | 0.2.0 release target |
-| Linux x86_64, NVIDIA | `py3-none-manylinux_2_35_x86_64` | AVX2/FMA/F16C/BMI2 CPU, glibc 2.35, CUDA-12-compatible driver | 0.2.0 release target |
+| Windows 10/11 x64, NVIDIA | `py3-none-win_amd64` | AVX2/FMA/F16C/BMI2 CPU, CUDA-12-compatible driver | release target |
+| Linux x86_64, NVIDIA | `py3-none-manylinux_2_35_x86_64` | AVX2/FMA/F16C/BMI2 CPU, glibc 2.35, CUDA-12-compatible driver | release target |
 | Linux AArch64, NVIDIA | `py3-none-manylinux_*_aarch64` | target-dependent | retained secondary target |
 | Linux CPU | `py3-none-manylinux_*` | no CUDA | development/secondary target |
 
@@ -74,8 +74,7 @@ targets yet.
 
 ## Installation target
 
-Once the 0.2.0 wheels are published, the self-contained CUDA runtime installation
-is:
+The self-contained CUDA runtime installation is:
 
 ```bash
 pip install "realtimetts-qwen-native[cuda12]"
@@ -96,7 +95,7 @@ Backend-specific development wheels can also be installed from a local wheelhous
 
 ```bash
 python -m pip install --find-links /path/to/wheelhouse \
-  "realtimetts-qwen-native[cuda12]==0.2.0"
+  "realtimetts-qwen-native[cuda12]==0.2.2"
 ```
 
 Optional Hugging Face wheel indexes may carry backend-specific local versions.
@@ -244,7 +243,7 @@ environment and install only from that wheelhouse:
 ```bash
 python -m venv /path/to/fresh-venv
 /path/to/fresh-venv/bin/python -m pip install --find-links /path/to/wheelhouse \
-  "realtimetts-qwen-native[cuda12]==0.2.0"
+  "realtimetts-qwen-native[cuda12]==0.2.2"
 /path/to/fresh-venv/bin/python -c \
   "from qwentts_cpp import QwenLibrary; print(QwenLibrary().version())"
 ```
