@@ -16,11 +16,16 @@ Release wheels come from GitHub CI, never from a local build.
 
 1. Bring the release state onto the release branch (fast-forward), tag it `v<version>`, and push both.
 2. Run the wheel workflow for that tag and wait for it to succeed; download its wheels and sdist unchanged.
+   The workflow records a GitHub build provenance attestation for each of these files.
 3. Install the CI wheel and run a short synthesis on the target device.
 4. Publish only with `python tools/release.py publish --repository testpypi --ci-run <run id> <artifacts>`,
    then the same files with `--repository pypi`. It refuses a dirty tree, an untagged or unpushed commit,
-   a commit not on the release branch, artifacts from another CI run and a failed `twine check`; after
-   uploading it compares the index SHA-256 values with the local files.
+   a commit not on the release branch, a CI run that did not build HEAD, files without an attestation
+   from that run and a failed `twine check`; after uploading it compares the index SHA-256 values with
+   the local files.
+
+Anyone can check that a released file was built by this repository's CI:
+`gh attestation verify <file> --repo KoljaB/realtimetts-qwen-native` (GitHub CLI, signed in).
 
 Never upload directly with Twine, never replace files under an existing version, and keep
 `tools/release.py` identical to the copy in the RealtimeTTS repository.

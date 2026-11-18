@@ -228,6 +228,10 @@ runtime.
   design.
 - Release builds run `twine check --strict` and are retained as immutable CI
   artifacts for installed-artifact acceptance and guarded publication.
+- The workflow attests every wheel and the sdist (GitHub build provenance).
+  The release uploads these files unchanged, so a file downloaded from PyPI
+  (releases after 0.2.2) verifies with the GitHub CLI:
+  `gh attestation verify <file> --repo KoljaB/realtimetts-qwen-native`.
 
 Do not publish, tag, or upload a wheel simply because a local build succeeded.
 Before release, validate an installed artifact on real Windows and Linux NVIDIA

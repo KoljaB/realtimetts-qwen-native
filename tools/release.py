@@ -12,7 +12,11 @@ The same file is used by RealtimeTTS and its native worker repositories.
 - the working tree is clean and HEAD carries the tag ``v<version>``;
 - that tag exists on the release remote and HEAD is on its release branch;
 - every artifact belongs to one distribution and version;
-- platform wheels were built by a successful CI run of HEAD (``--ci-run``);
+- platform wheels, and every file of a PyPI release, come from a successful
+  CI run of HEAD in the public GitHub repository (``--ci-run``);
+- with ``--ci-run``, every file carries a GitHub build provenance attestation
+  from that run (``gh attestation verify``), so users can check the files
+  they download from the index the same way;
 - native wheels carry the build-info contract pinned in build_package.py;
 - ``twine check --strict`` passes.
 
@@ -36,30 +40,36 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Release remote and branch per distribution and package index.
+# Release remote and branch per distribution and package index, and the public
+# GitHub repository whose CI runs build and attest the release files.
 PROJECTS = {
     "realtimetts": {
         "testpypi": ("development", "master"),
         "pypi": ("origin", "master"),
+        "github": "KoljaB/RealtimeTTS",
     },
     "realtimetts-breeze-native": {
         "testpypi": ("origin", "main"),
         "pypi": ("origin", "main"),
+        "github": "KoljaB/realtimetts-breeze-native",
         "native_backend": "vulkan",
     },
     "realtimetts-breeze-native-cuda12": {
         "testpypi": ("origin", "main"),
         "pypi": ("origin", "main"),
+        "github": "KoljaB/realtimetts-breeze-native",
         "native_backend": "cuda12",
     },
     # realtimetts-qwen-native: one repository, the CUDA line on gpu, the CPU line on main.
     "realtimetts-qwen-native": {
         "testpypi": ("origin", "gpu"),
         "pypi": ("origin", "gpu"),
+        "github": "KoljaB/realtimetts-qwen-native",
     },
     "realtimetts-qwen-native-cpu": {
         "testpypi": ("origin", "main"),
         "pypi": ("origin", "main"),
+        "github": "KoljaB/realtimetts-qwen-native",
     },
 }
 INDEX_JSON = {
@@ -150,18 +160,37 @@ def check_source(version: str, remote: str, branch: str) -> str:
     return head
 
 
-def check_ci_run(run_id: str, head: str) -> None:
+def check_ci_run(run_id: str, head: str, github: str) -> None:
     result = subprocess.run(
-        ["gh", "run", "view", run_id, "--json", "headSha,status,conclusion"],
+        ["gh", "run", "view", run_id, "--repo", github, "--json", "headSha,status,conclusion"],
         cwd=ROOT, capture_output=True, text=True,
     )
     if result.returncode:
-        raise ReleaseError(f"cannot read CI run {run_id}: {result.stderr.strip()}")
+        raise ReleaseError(f"cannot read CI run {run_id} of {github}: {result.stderr.strip()}")
     run = json.loads(result.stdout)
     if run.get("headSha") != head:
         raise ReleaseError(f"CI run {run_id} built {run.get('headSha')}, not HEAD {head}")
     if run.get("status") != "completed" or run.get("conclusion") != "success":
         raise ReleaseError(f"CI run {run_id} did not succeed")
+
+
+def check_attestations(paths: list[Path], run_id: str, head: str, github: str) -> None:
+    """Every file needs a build provenance attestation from CI run ``run_id`` of HEAD."""
+    run_url = f"https://github.com/{github}/actions/runs/{run_id}/"
+    for path in paths:
+        result = subprocess.run(
+            ["gh", "attestation", "verify", str(path), "--repo", github,
+             "--source-digest", head, "--deny-self-hosted-runners", "--format", "json"],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        if result.returncode:
+            raise ReleaseError(f"{path.name}: no valid attestation from {github} at "
+                               f"{head[:12]}: {result.stderr.strip()}")
+        runs = {item["verificationResult"]["signature"]["certificate"]["runInvocationURI"]
+                for item in json.loads(result.stdout)}
+        if not any(uri.startswith(run_url) for uri in runs):
+            raise ReleaseError(f"{path.name}: attested by {sorted(runs)}, not by CI run {run_id}")
+        print(f"attestation OK  {path.name}")
 
 
 def check_native_build_info(paths: list[Path], backend: str) -> None:
@@ -203,13 +232,16 @@ def twine(*args: str) -> None:
 
 def check(paths: list[Path], repository: str, ci_run: str | None) -> tuple[str, str]:
     distribution, version, platform = check_artifacts(paths)
-    remote, branch = PROJECTS[distribution][repository]
+    project = PROJECTS[distribution]
+    remote, branch = project[repository]
     head = check_source(version, remote, branch)
-    if platform and not ci_run:
-        raise ReleaseError("platform wheels need --ci-run with the CI run that built them")
+    if (platform or repository == "pypi") and not ci_run:
+        raise ReleaseError(f"PyPI releases and platform wheels need --ci-run with the "
+                           f"{project['github']} CI run that built and attested them")
     if ci_run:
-        check_ci_run(ci_run, head)
-    backend = PROJECTS[distribution].get("native_backend")
+        check_ci_run(ci_run, head, project["github"])
+        check_attestations(paths, ci_run, head, project["github"])
+    backend = project.get("native_backend")
     if backend:
         check_native_build_info(paths, backend)
     twine("check", "--strict", *map(str, paths))
@@ -245,7 +277,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("command", choices=("check", "publish", "verify-index"))
     parser.add_argument("artifacts", nargs="+", type=Path)
     parser.add_argument("--repository", choices=sorted(INDEX_JSON), required=True)
-    parser.add_argument("--ci-run", help="GitHub Actions run ID that built platform wheels")
+    parser.add_argument("--ci-run", help="ID of the public GitHub Actions run that built and "
+                                         "attested the artifacts")
     args = parser.parse_args(argv)
     paths = [path.resolve() for path in args.artifacts]
     try:
