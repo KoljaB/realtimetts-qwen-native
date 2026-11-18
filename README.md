@@ -44,6 +44,14 @@ python -m pip install "realtimetts-qwen-native-cpu==0.5.1"
 python -c "import qwentts_cpp_cpu as q; print(q.__version__, q.QT_ABI_VERSION, q.CPU_ONLY)"
 ```
 
+To check that a downloaded wheel or sdist was built by this repository's
+GitHub Actions workflow (releases after 0.5.1), use the
+[GitHub CLI](https://cli.github.com/):
+
+```bash
+gh attestation verify <file> --repo KoljaB/realtimetts-qwen-native
+```
+
 The release provides these CPU wheels:
 
 | Platform | Wheel baseline |
