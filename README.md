@@ -94,7 +94,7 @@ sdist:
 
 ```bash
 # Requires CMake, a C++ compiler, and the platform's native build tools.
-git clone --branch codex/qwen-cpu-public-release https://github.com/KoljaB/realtimetts-qwen-native.git
+git clone --branch v0.5.1 https://github.com/KoljaB/realtimetts-qwen-native.git
 cd realtimetts-qwen-native
 git clone https://github.com/KoljaB/qwentts.cpp.git third_party/qwentts.cpp
 git -C third_party/qwentts.cpp checkout e2853ded14f820dcf550c9bf5e96037af80479be

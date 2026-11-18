@@ -134,5 +134,6 @@ jobs:
           path: dist/*.tar.gz
           if-no-files-found: error
 
-# Publication deliberately lives outside Actions: tools/release_guard.py publish
-# requires fresh signed runtime evidence and matching immutable artifact hashes.
+# Publication lives outside Actions: tools/release.py publish --ci-run <this run>
+# checks the tag, the branch and this run, uploads the unchanged artifacts and
+# compares the package index's SHA-256 values with them.
