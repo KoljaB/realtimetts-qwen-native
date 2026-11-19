@@ -15,6 +15,14 @@ qwen/GGML libraries. It deliberately does **not** bundle GGUF model weights.
 
 ## Release status
 
+Version 0.2.3 (2026-11-19) streams the first eight codec frames one by one (then 2, 2, 4, 8 per
+flush; it was 1, 2, 4, 8), on qwentts.cpp `965170a`. A reply opens with a pause the caller trims, so
+the first word no longer waits for a whole 4- or 8-frame chunk. RTX 2080 SUPER, 40 seeded requests
+through RealtimeTTS: first audible audio median 125 -> 98 ms (0.6B) and p90 242 -> 147 ms; 1.7B p90
+162 -> 115 ms; total synthesis time unchanged. The audio is not bit-identical to 0.2.2 (the codec
+decodes in other batch sizes; the difference is 35-48 dB below the speech). The Python API is
+unchanged.
+
 Version 0.2.2 (2026-11-18) adds the onset profiles of Qwen3-TTS 1.7B Base Q8_0:
 `qwen3_tts_12hz_1_7b_base_q8_v1` (speaker-only) and `qwen3_tts_12hz_1_7b_base_q8_icl_v1`
 (reference text). The native library is the one of 0.2.1.
@@ -25,7 +33,7 @@ cloning with a reference text, on qwentts.cpp `e2853de`. Version 0.2.0 was the n
 coordinated with RealtimeTTS 0.8.4.
 
 The release-tested native source is pinned to qwentts.cpp commit
-`e2853ded14f820dcf550c9bf5e96037af80479be`, which uses C ABI v5. The build
+`965170af9a12ab3e4d33b115af2cb582771e31f5`, which uses C ABI v5. The build
 script verifies `QT_ABI_VERSION == 5` before compiling, and all release workflows
 fetch that exact commit by default. The native `qt_version()` result remains the
 authoritative runtime build identity.
@@ -95,7 +103,7 @@ Backend-specific development wheels can also be installed from a local wheelhous
 
 ```bash
 python -m pip install --find-links /path/to/wheelhouse \
-  "realtimetts-qwen-native[cuda12]==0.2.2"
+  "realtimetts-qwen-native[cuda12]==0.2.3"
 ```
 
 Optional Hugging Face wheel indexes may carry backend-specific local versions.
@@ -247,7 +255,7 @@ environment and install only from that wheelhouse:
 ```bash
 python -m venv /path/to/fresh-venv
 /path/to/fresh-venv/bin/python -m pip install --find-links /path/to/wheelhouse \
-  "realtimetts-qwen-native[cuda12]==0.2.2"
+  "realtimetts-qwen-native[cuda12]==0.2.3"
 /path/to/fresh-venv/bin/python -c \
   "from qwentts_cpp import QwenLibrary; print(QwenLibrary().version())"
 ```
